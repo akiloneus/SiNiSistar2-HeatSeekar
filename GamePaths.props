@@ -1,0 +1,29 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)GamePaths.local.props" Condition="Exists('$(MSBuildThisFileDirectory)GamePaths.local.props')" />
+  <PropertyGroup>
+    <GameDirectory Condition="'$(GameDirectory)' == ''">$(SINI_GAME_DIR)</GameDirectory>
+    <GameCoreDirectory>$(GameDirectory)\BepInEx\core</GameCoreDirectory>
+    <GameInteropDirectory>$(GameDirectory)\BepInEx\interop</GameInteropDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(GameCoreDirectory)\BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(GameCoreDirectory)\BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(GameCoreDirectory)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(GameCoreDirectory)\0Harmony.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\SiNiSistar2.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UnityEngine.ImageConversionModule.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UnityEngine.AudioModule.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\Unity.InputSystem.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UniRx.dll" Private="false" />
+    <Reference Include="$(GameInteropDirectory)\UniTask.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="CheckGameReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(GameInteropDirectory)\SiNiSistar2.dll')" Text="Build with -p:GameDirectory=&quot;path to the BepInEx game installation&quot;. Game assemblies are local references and are not distributed." />
+  </Target>
+</Project>

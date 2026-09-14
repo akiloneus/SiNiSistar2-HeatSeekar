@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\GamePaths.props" />
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>SiNiSistar2.HeatSeekar</AssemblyName>
+    <RootNamespace>HeatSeekar</RootNamespace>
+    <Description>Native mouse rebinding, cursor aiming and menu navigation for SiNiSistar2.</Description>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <HeatSeekarResource Include="Assets\cursor_circle_5px_31x31.png" LogicalName="HeatSeekar.Assets.cursor.png" TargetPath="assets\cursor.png" />
+    <HeatSeekarResource Include="Assets\crosshair.png" LogicalName="HeatSeekar.Assets.crosshair.png" TargetPath="assets\crosshair.png" />
+    <HeatSeekarResource Include="..\..\localization\en\ui.json" LogicalName="HeatSeekar.Localization.en.json" TargetPath="localization\en\ui.json" />
+    <HeatSeekarResource Include="..\..\localization\ja\ui.json" LogicalName="HeatSeekar.Localization.ja.json" TargetPath="localization\ja\ui.json" />
+    <HeatSeekarResource Include="..\..\localization\zh-CN\ui.json" LogicalName="HeatSeekar.Localization.zh-CN.json" TargetPath="localization\zh-CN\ui.json" />
+    <HeatSeekarResource Include="..\..\localization\zh-TW\ui.json" LogicalName="HeatSeekar.Localization.zh-TW.json" TargetPath="localization\zh-TW\ui.json" />
+    <HeatSeekarResource Include="..\..\localization\ko\ui.json" LogicalName="HeatSeekar.Localization.ko.json" TargetPath="localization\ko\ui.json" />
+    <EmbeddedResource Include="@(HeatSeekarResource)" />
+    <Content Include="@(HeatSeekarResource)" CopyToOutputDirectory="Always" />
+    <EmbeddedResource Include="Assets\magic_bow_effect_003.png" />
+    <EmbeddedResource Include="Assets\magic_bow_effect_004.png" />
+    <InternalsVisibleTo Include="HeatSeekar.RuntimeChecks" />
+  </ItemGroup>
+</Project>

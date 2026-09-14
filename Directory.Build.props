@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <!-- The single release-version source. DLL and source filenames stay stable. -->
+    <Version>0.8.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+  <Target Name="GenerateHeatSeekarVersion" BeforeTargets="CoreCompile">
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(Version)', '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'))"
+           Text="Version must follow Semantic Versioning 2.0.0 (major.minor.patch[-prerelease][+build])." />
+    <WriteLinesToFile File="$(IntermediateOutputPath)BuildVersion.g.cs"
+                      Lines="namespace $(RootNamespace) { internal static class BuildVersion { internal const string Value = &quot;$(Version)&quot;%3B } }"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)BuildVersion.g.cs" />
+    </ItemGroup>
+  </Target>
+</Project>

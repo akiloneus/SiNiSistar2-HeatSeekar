@@ -1,0 +1,28 @@
+# Build output, local game references and diagnostic artifacts
+bin/
+obj/
+/work/
+/dist/
+/artifacts/
+TestResults/
+GamePaths.local.props
+*.dll
+*.exe
+*.pdb
+*.dmp
+*.log
+*.zip
+*.7z
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# Personal editor settings and environment files
+.vs/
+.idea/
+*.user
+*.suo
+.env
+.env.*
+!.env.example
