@@ -1,4 +1,5 @@
 using Il2CppInterop.Runtime;
+using SiNiSistar2.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,15 +11,11 @@ internal sealed class AspectDisplay : IDisposable
 {
     private sealed record CameraState(Camera Camera, Rect Rect, float Aspect, bool AutomaticAspect);
     private sealed record RectState(RectTransform Rect, Vector2 Minimum, Vector2 Maximum);
-    private sealed record CanvasState(Canvas Canvas, List<RectState> Children);
+    private sealed record CanvasState(Canvas Canvas, CanvasScaler? Scaler, CanvasScaler.ScreenMatchMode MatchMode, List<RectState> HudChildren);
     private readonly DisplayOptions display;
     private readonly Dictionary<IntPtr, CameraState> cameras = new();
     private readonly Dictionary<IntPtr, CanvasState> canvases = new();
     private GameObject? bars;
-    private Canvas? barCanvas;
-    private int nativeSortOrder;
-    private int externalSortOrder = int.MaxValue;
-    private bool externalOpen;
     private RectTransform[] barRects = Array.Empty<RectTransform>();
     private float nextCanvasScan;
     private int width, height;
@@ -42,57 +39,44 @@ internal sealed class AspectDisplay : IDisposable
         ApplyCamera(manager.FrontCamera, rect);
         var resized = width != Screen.width || height != Screen.height;
         width = Screen.width; height = Screen.height;
-        var toolsOpen = ExternalUi.IsOpen;
-        if (resized || toolsOpen != externalOpen || Time.realtimeSinceStartup >= nextCanvasScan)
+        if (resized || Time.realtimeSinceStartup >= nextCanvasScan)
         {
             nextCanvasScan = Time.realtimeSinceStartup + 0.5f;
-            externalOpen = toolsOpen;
-            externalSortOrder = int.MaxValue;
-            if (toolsOpen)
-                // UniverseLib's independently sorted mod canvases live under
-                // this container and use DontSave flags. Keep bands below them
-                // without changing the tool's canvas or layout.
-                foreach (var canvas in Resources.FindObjectsOfTypeAll<Canvas>())
-                    if (canvas.isActiveAndEnabled && canvas.renderMode == RenderMode.ScreenSpaceOverlay
-                        && canvas.transform.parent != null && canvas.transform.parent.name == "UniverseLibCanvas")
-                        externalSortOrder = Math.Min(externalSortOrder, canvas.sortingOrder);
-            nativeSortOrder = 0;
             foreach (var canvas in UnityEngine.Object.FindObjectsOfType<Canvas>(true))
-                {
-                    if (canvas == null || canvas != canvas.rootCanvas || canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                        || canvas.gameObject.name.StartsWith("HeatSeekar.")) continue;
-                    var native = canvas.GetComponentsInParent<MonoBehaviour>(true).Any(component => component != null
-                        && component.GetIl2CppType().FullName.StartsWith("SiNiSistar2."));
-                    if (!native) continue;
-                    foreach (var layer in canvas.GetComponentsInChildren<Canvas>(true))
-                        nativeSortOrder = Math.Max(nativeSortOrder, layer.sortingOrder);
-                    if (canvases.ContainsKey(canvas.Pointer)) continue;
-                    // Keep native overlay sorting and stencil masks. Converting
-                    // these canvases to UICamera hides save slots and moves the
-                    // pause dimmer behind the portrait/front-camera layers.
-                    // Transform layout anchors without reparenting: animation
-                    // bindings continue to address the original hierarchy.
-                    var children = new List<RectState>();
+            {
+                if (canvas == null || canvas != canvas.rootCanvas || canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                    || canvas.gameObject.name.StartsWith("HeatSeekar.") || canvases.ContainsKey(canvas.Pointer)) continue;
+                var native = canvas.GetComponentsInParent<MonoBehaviour>(true).Any(component => component != null
+                    && component.GetIl2CppType().FullName.StartsWith("SiNiSistar2."));
+                if (!native) continue;
+                // Most HUDs render through UICamera. The quest notification is
+                // an overlay HUD, so only its anchors follow the world viewport.
+                // Menus and fades keep their full-screen layout, sorting and masks.
+                var children = new List<RectState>();
+                if (canvas.GetComponentInParent<QuestProgressPopup>(true) != null)
                     for (var index = 0; index < canvas.transform.childCount; index++)
                     {
                         var child = canvas.transform.GetChild(index).TryCast<RectTransform>();
                         if (child != null) children.Add(new(child, child.anchorMin, child.anchorMax));
                     }
-                    canvases[canvas.Pointer] = new(canvas, children);
-                }
+                var scaler = canvas.GetComponent<CanvasScaler>();
+                canvases[canvas.Pointer] = new(canvas, scaler, scaler != null ? scaler.screenMatchMode : default, children);
+            }
         }
         foreach (var state in canvases.Values)
-            foreach (var child in state.Children)
+        {
+            // Native menus use a fixed design size and usually match height.
+            // Fit both dimensions so narrow windows cannot crop their text.
+            if (state.Scaler != null && state.Scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+                state.Scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+            foreach (var child in state.HudChildren)
             {
                 if (child.Rect == null) continue;
                 child.Rect.anchorMin = rect.position + Vector2.Scale(child.Minimum, rect.size);
                 child.Rect.anchorMax = rect.position + Vector2.Scale(child.Maximum, rect.size);
             }
+        }
         EnsureBars();
-        // Native scrolling lists can draw beyond their fixed design area. The
-        // black bands must cover those pixels as well as the camera background.
-        barCanvas!.sortingOrder = Math.Min(Math.Min(short.MaxValue - 4, nativeSortOrder + 1),
-            Math.Max(short.MinValue, externalSortOrder - 1));
         SetBar(0, 0, 0, width, PixelRect.y);
         SetBar(1, 0, PixelRect.yMax, width, height - PixelRect.yMax);
         SetBar(2, 0, PixelRect.y, PixelRect.x, PixelRect.height);
@@ -127,8 +111,10 @@ internal sealed class AspectDisplay : IDisposable
         bars.hideFlags = HideFlags.HideAndDontSave;
         UnityEngine.Object.DontDestroyOnLoad(bars);
         var canvas = bars.AddComponent<Canvas>();
-        barCanvas = canvas;
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        // Cover the camera output outside 2:1, then let menus and external tools
+        // draw over the bands. Their native sorting order remains untouched.
+        canvas.sortingOrder = short.MinValue;
         barRects = Enumerable.Range(0, 4).Select(index =>
         {
             var rect = new GameObject("Bar" + index, new[] { Il2CppType.Of<RectTransform>() }).GetComponent<RectTransform>();
@@ -160,7 +146,8 @@ internal sealed class AspectDisplay : IDisposable
         }
         foreach (var state in canvases.Values)
         {
-            foreach (var child in state.Children)
+            if (state.Scaler != null) state.Scaler.screenMatchMode = state.MatchMode;
+            foreach (var child in state.HudChildren)
             {
                 if (child.Rect == null) continue;
                 child.Rect.anchorMin = child.Minimum;

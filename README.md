@@ -6,12 +6,14 @@ HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindi
 
 ## Download
 
-Current release: [**HeatSeekar 0.8.0**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/tag/v0.8.0) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
+Current release: [**HeatSeekar 0.8.1**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/tag/v0.8.1) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
+
+**0.8.1 update:** Fixes menu text being covered by black bars with **Preserve 2:1**, while keeping the game world and HUD within 2:1. A more compact help area gives Video enough room to show all options without scrolling. The HeatSeekar page now uses the standard back controls instead of a separate Back button.
 
 | Package | Choose this if… |
 | --- | --- |
-| [**Full package — includes BepInEx**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/download/v0.8.0/SiNiSistar2.HeatSeekar-0.8.0-win-x64-Full.zip) | You are installing HeatSeekar for the first time and need BepInEx. |
-| [**Mod only / Update**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/download/v0.8.0/SiNiSistar2.HeatSeekar-0.8.0-win-x64-ModOnly.zip) | You already have a compatible BepInEx 6 IL2CPP installation. |
+| [**Full package — includes BepInEx**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/download/v0.8.1/SiNiSistar2.HeatSeekar-0.8.1-win-x64-Full.zip) | You are installing HeatSeekar for the first time and need BepInEx. |
+| [**Mod only / Update**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/download/v0.8.1/SiNiSistar2.HeatSeekar-0.8.1-win-x64-ModOnly.zip) | You already have a compatible BepInEx 6 IL2CPP installation. |
 
 The full package includes BepInEx **6.0.0-be.754** for Unity IL2CPP / Windows x64.
 

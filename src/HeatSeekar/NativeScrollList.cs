@@ -59,7 +59,7 @@ internal sealed class NativeScrollList : IDisposable
         }
         viewport.anchorMin = viewport.anchorMax = viewport.pivot = new Vector2(0.5f, 0.5f);
         viewport.anchoredPosition = Vector2.zero;
-        viewport.sizeDelta = new Vector2(1000, 470);
+        viewport.sizeDelta = new Vector2(1000, 520);
         // Preserve the native centered pivot and alignment. Changing these to
         // a top pivot also changes the motion produced by the spacing curves.
         layout = list.GetComponent<VerticalLayoutGroup>();
@@ -111,6 +111,11 @@ internal sealed class NativeScrollList : IDisposable
         startPosition = listState.Position;
         if (height > viewport.rect.height)
             startPosition.y = viewport.rect.yMax - (1 - list.pivot.y) * height;
+        else
+            // The native list starts below center. Keep that offset only as
+            // far as it allows every row of a fitting list to remain visible.
+            startPosition.y = Mathf.Clamp(startPosition.y, viewport.rect.yMin + list.pivot.y * height,
+                viewport.rect.yMax - (1 - list.pivot.y) * height);
         list.anchoredPosition = startPosition;
         scroll.StopMovement();
         lastSelection = null; lastHeight = 0;

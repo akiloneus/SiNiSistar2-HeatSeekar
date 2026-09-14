@@ -232,11 +232,8 @@ internal sealed class NativeSettingsPages : IDisposable
         var list = content.Find("List").GetComponent<RectTransform>();
         var fontTemplate = page.m_FullScreen.GetComponentsInChildren<Text>(true).First();
         title = content.Find("Title").GetComponentsInChildren<Text>(true).First();
-        help = NewText("Help", content, fontTemplate, 17, new Vector2(0, -300), new Vector2(1150, 70));
-        var definitions = options.Options.Where(option => !option.Video && !option.Audio).Concat(new[]
-        {
-            new SettingsModel.Row { Name = "Back", LabelKey = "ui_label_back", HelpKey = "ui_help_back", Activate = RequestClose }
-        }).ToArray();
+        help = NewText("Help", content, fontTemplate, 17, new Vector2(0, -316), new Vector2(1150, 48));
+        var definitions = options.Options.Where(option => !option.Video && !option.Audio).ToArray();
         var toggles = new List<Toggle>();
         foreach (var option in definitions)
         {
