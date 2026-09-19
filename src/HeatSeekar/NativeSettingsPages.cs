@@ -377,7 +377,9 @@ internal sealed class NativeSettingsPages : IDisposable
             if (state.Page == null || !state.Page.IsOpen || state.Help == null) continue;
             var focused = state.Page.OnCursorToggle;
             state.Help.text = state.FixedHelp.Length > 0
-                ? Plugin.Runtime?.Rebinding.ConsumesInput == true ? "" : text.Text("ui_prefix_function") + " " + text.Text(state.FixedHelp)
+                ? options.MenuNavigationEnabled && Plugin.Runtime?.Rebinding.ConsumesInput != true
+                    ? text.Text("ui_prefix_function") + " " + text.Text(state.FixedHelp)
+                    : ""
                 : options.Description(focused != null && visuals.TryGetValue(focused.Pointer, out var auxiliaryVisual) ? auxiliaryVisual.Option : null);
             if (text.Font != null) state.Help.font = text.Font;
         }

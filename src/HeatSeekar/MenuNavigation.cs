@@ -307,6 +307,11 @@ internal sealed class MenuNavigation : IDisposable
         if (logical == null) { Focus(ValidToggles().FirstOrDefault()); return; }
         if (Slot(logical) != null)
         {
+            // Native binding pages provide explicit links between their
+            // keyboard slots. Follow those links before falling back to row
+            // traversal; the latter groups Up/Down/Left/Right into one row.
+            var linked = Neighbour(logical, x, y);
+            if (linked != null) { Focus(linked); return; }
             if (y != 0) Traverse(y > 0 ? -1 : 1);
             return;
         }

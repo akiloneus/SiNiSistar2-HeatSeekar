@@ -21,6 +21,7 @@ internal sealed class SettingsModel
     private readonly Localization text;
     private readonly List<Row> rows = new();
     internal IReadOnlyList<Row> Options => rows;
+    internal bool MenuNavigationEnabled => rows.First(row => row.Name == "Aki-style menu navigation").IsOn?.Invoke() == true;
 
     public SettingsModel(Settings settings, DisplayOptions display, Localization text)
     {
