@@ -6,9 +6,9 @@ HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindi
 
 ## Download
 
-Current release: [**HeatSeekar 0.8.2**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
+Current release: [**HeatSeekar 0.8.3**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
 
-**0.8.2 update:** Fixes **Gallery > Status effect settings** options such as **Torn clothes** not responding when **Aki menu navigation** is enabled. These options can now be selected and toggled normally.
+**0.8.3 update:** Fixes Gallery navigation and menu input-state regressions with **Aki menu navigation** enabled. Gallery now uses Q/E to change pages, L for slow motion, and P for stop, while the on-screen guide labels update with the active bindings. Enhanced confirm/back bindings are removed correctly when the feature is disabled.
 
 | Package | Choose this if… |
 | --- | --- |
