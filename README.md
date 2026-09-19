@@ -6,18 +6,17 @@ HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindi
 
 ## Download
 
-Current release: [**HeatSeekar 0.8.1**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/tag/v0.8.1) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
+Current release: [**HeatSeekar 0.8.2**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
 
-**0.8.1 update:** Fixes menu text being covered by black bars with **Preserve 2:1**, while keeping the game world and HUD within 2:1. A more compact help area gives Video enough room to show all options without scrolling. The HeatSeekar page now uses the standard back controls instead of a separate Back button.
+**0.8.2 update:** Fixes **Gallery > Status effect settings** options such as **Torn clothes** not responding when **Aki menu navigation** is enabled. These options can now be selected and toggled normally.
 
 | Package | Choose this if… |
 | --- | --- |
-| [**Full package — includes BepInEx**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/download/v0.8.1/SiNiSistar2.HeatSeekar-0.8.1-win-x64-Full.zip) | You are installing HeatSeekar for the first time and need BepInEx. |
-| [**Mod only / Update**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/download/v0.8.1/SiNiSistar2.HeatSeekar-0.8.1-win-x64-ModOnly.zip) | You already have a compatible BepInEx 6 IL2CPP installation. |
+| [**Download the latest release**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) | Choose the full package for a first installation, or the mod-only package if you already have BepInEx. |
 
-The full package includes BepInEx **6.0.0-be.754** for Unity IL2CPP / Windows x64.
+The full package includes BepInEx **6.0.0-be.754** for Unity IL2CPP / Windows x64. The mod-only package is intended for updates or an existing compatible BepInEx 6 IL2CPP installation.
 
-Use one of the two packages above to install the mod. GitHub's automatic **Source code** downloads contain the source files.
+The latest release includes both packages. GitHub's automatic **Source code** downloads contain the source files.
 
 [All releases](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases) · [Source repository](https://github.com/akiloneus/SiNiSistar2-HeatSeekar)
 
