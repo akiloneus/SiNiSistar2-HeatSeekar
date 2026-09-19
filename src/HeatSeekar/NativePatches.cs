@@ -146,6 +146,16 @@ internal static class NativeVideoReadyPatch
     private static void Postfix(SiNiSistar2.UI.Pause.VideoUI __instance) => Plugin.Runtime?.Pages.Ready(__instance);
 }
 
+[HarmonyPatch(typeof(SiNiSistar2.UI.Gallery.ButtonGuideUI), nameof(SiNiSistar2.UI.Gallery.ButtonGuideUI.Setup))]
+internal static class GalleryButtonGuideSetupPatch
+{
+    private static void Postfix(SiNiSistar2.UI.Gallery.ButtonGuideUI __instance)
+    {
+        try { Plugin.Runtime?.Menu.RefreshGalleryButtonGuide(__instance); }
+        catch (Exception error) { Plugin.Runtime?.Warn("Gallery button guide", error); }
+    }
+}
+
 [HarmonyPatch(typeof(SiNiSistar2.UI.Pause.VideoUI), nameof(SiNiSistar2.UI.Pause.VideoUI.UpdateVideoParameter))]
 internal static class NativeVideoUpdatePatch
 {

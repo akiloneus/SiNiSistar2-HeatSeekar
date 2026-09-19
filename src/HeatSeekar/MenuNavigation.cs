@@ -1,5 +1,6 @@
 using BepInEx.Logging;
 using HeatSeekar.Core;
+using SiNiSistar2.UI.Gallery;
 using SiNiSistar2.UI.Pause;
 using SiNiSistar2.UI;
 using SiNiSistar2.UI.ToggleParts;
@@ -87,9 +88,9 @@ internal sealed class MenuNavigation : IDisposable
         galleryBindings?.Tick(ownGalleryInput);
         if (ownGalleryInput)
         {
-            // Gallery keys are native controls. Do not let the generic menu
-            // shortcuts consume Q, R, Escape or the old Gallery bindings.
-            frame = frame with { Cancel = false, Pause = false, Clear = false, Reset = false };
+            // Gallery keys are native controls. Escape still returns through
+            // the generic cancel path, while Pause/Clear/Reset stay native.
+            frame = frame with { Pause = false, Clear = false, Reset = false };
         }
         var mouse = Mouse.current;
         var position = mouse == null ? Vector2.zero : mouse.position.ReadValue();
@@ -151,6 +152,7 @@ internal sealed class MenuNavigation : IDisposable
         var moved = (position - lastPointer).sqrMagnitude > 0.25f;
         lastPointer = position;
         if (Time.frameCount == enteredFrame || rebinding.ConsumesInput || !current.IsSelectState) return;
+        SyncLogical();
         // Q/R switch to focus mode, but their target is the slot that was under
         // the visible pointer before that switch, not the entire logical row.
         var editTarget = (frame.Clear || frame.Reset) && ((policy.PointerActive && pointerArmed) || moved) ? HitTest(position) : null;
@@ -218,6 +220,19 @@ internal sealed class MenuNavigation : IDisposable
         else if (frame.Confirm || (frame.Click && !policy.PointerActive)) Confirm(logical, false);
         // No input module may drop the logical selection with an invisible background click.
         if (!policy.PointerActive && logical != null) Focus(logical, reveal: false);
+    }
+
+    private void SyncLogical()
+    {
+        if (current == null) return;
+        var native = current.OnCursorToggle;
+        if (IsAvailable(native))
+        {
+            if (logical != native) Focus(native);
+            return;
+        }
+        if (IsAvailable(logical)) return;
+        Focus(ValidToggles().FirstOrDefault());
     }
 
     private void Confirm(Toggle? target, bool pointerClick)
@@ -508,4 +523,7 @@ internal sealed class MenuNavigation : IDisposable
         if (galleryBindings == null) operation();
         else galleryBindings.WithNativeBindings(operation);
     }
+
+    internal void RefreshGalleryButtonGuide(ButtonGuideUI guide)
+        => galleryBindings?.RefreshGuide(guide, true);
 }
