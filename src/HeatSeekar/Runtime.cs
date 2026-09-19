@@ -51,6 +51,7 @@ internal sealed class Runtime : IDisposable
         Options = new SettingsModel(settings, Display, Text);
         Pages = new NativeSettingsPages(Options, Text, log);
         Menu = new MenuNavigation(Rebinding, log);
+        Configuration.SetNativeBindingScope(Menu.WithNativeBindings);
         Entries = new NativeMenuEntries(log, Text);
     }
 

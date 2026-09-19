@@ -16,6 +16,7 @@ internal sealed class MenuNavigation : IDisposable
     private readonly ManualLogSource log;
     private readonly NativeRebinding rebinding;
     private readonly UiInput ui;
+    private GalleryInputBindings? galleryBindings;
     private readonly MenuPolicy policy = new();
     private readonly MenuPolicy idlePolicy = new();
     private readonly List<ToggleListUI> menus = new();
@@ -54,7 +55,9 @@ internal sealed class MenuNavigation : IDisposable
     {
         if (input != null && input.Pointer == manager.Pointer) return;
         ReleaseOwnership();
+        galleryBindings?.Dispose();
         input = manager;
+        galleryBindings = new GalleryInputBindings(manager);
         ui.SetNativeInput(manager);
         rebuildPending = true;
     }
@@ -68,7 +71,7 @@ internal sealed class MenuNavigation : IDisposable
     public void Unregister(ToggleListUI menu)
     {
         menus.RemoveAll(item => item == null || item.Pointer == menu.Pointer);
-        if (current == menu) Suspend();
+        if (current == menu) SuspendCurrent();
     }
 
     public void Tick(bool enabled)
@@ -80,6 +83,14 @@ internal sealed class MenuNavigation : IDisposable
             rebuildPending = false;
         }
         var frame = ui.Read();
+        var ownGalleryInput = enabled && IsGalleryOpen() && Application.isFocused && !ExternalUi.IsOpen;
+        galleryBindings?.Tick(ownGalleryInput);
+        if (ownGalleryInput)
+        {
+            // Gallery keys are native controls. Do not let the generic menu
+            // shortcuts consume Q, R, Escape or the old Gallery bindings.
+            frame = frame with { Cancel = false, Pause = false, Clear = false, Reset = false };
+        }
         var mouse = Mouse.current;
         var position = mouse == null ? Vector2.zero : mouse.position.ReadValue();
         idlePolicy.UpdatePointer((position - lastPointer).sqrMagnitude > 0.25f, frame.NonPointerInput);
@@ -104,7 +115,7 @@ internal sealed class MenuNavigation : IDisposable
             : menus.LastOrDefault(menu => menu.isActiveAndEnabled && menu.IsOpen && menu.IsSelectState);
         if (candidate == null)
         {
-            Suspend();
+            SuspendCurrent();
             lastPointer = position;
             return;
         }
@@ -449,6 +460,12 @@ internal sealed class MenuNavigation : IDisposable
         && navigationEnabled && current.IsSelectState
         && Application.isFocused && !ExternalUi.IsOpen;
 
+    private static bool IsGalleryOpen()
+    {
+        var gallery = GameContext.Managers?.m_Gallery;
+        return gallery != null && (gallery.IsOpenedUI || gallery.GalleryUI?.IsOpen == true);
+    }
+
     // Skip processing while we supply native menu events, without disabling the
     // module or altering its pointer actions. UniverseLib shares their lifecycle.
     internal bool SuppressModule(BaseInputModule module) => OwnsMenuInput && suppressed
@@ -464,6 +481,12 @@ internal sealed class MenuNavigation : IDisposable
 
     public void Suspend()
     {
+        galleryBindings?.Tick(false);
+        SuspendCurrent();
+    }
+
+    private void SuspendCurrent()
+    {
         current = null;
         logical = null;
         pointerArmed = false;
@@ -472,5 +495,17 @@ internal sealed class MenuNavigation : IDisposable
         ui.ClearPending();
     }
 
-    public void Dispose() { Suspend(); ui.Dispose(); menus.Clear(); }
+    public void Dispose()
+    {
+        Suspend();
+        galleryBindings?.Dispose();
+        ui.Dispose();
+        menus.Clear();
+    }
+
+    internal void WithNativeBindings(Action operation)
+    {
+        if (galleryBindings == null) operation();
+        else galleryBindings.WithNativeBindings(operation);
+    }
 }

@@ -19,10 +19,13 @@ internal sealed class NativeConfiguration : IDisposable
     private string baselineKeys = "", baselineRuntime = "", lastRuntime = "";
     private bool baselineFullscreen, baselineVsync, initialized;
     private int baselineResolution;
+    private Action<Action>? withNativeBindings;
     private static readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
     internal bool Ready => initialized;
 
     public NativeConfiguration(ManualLogSource log) => this.log = log;
+
+    internal void SetNativeBindingScope(Action<Action> scope) => withNativeBindings = scope;
 
     public void Tick()
     {
@@ -40,7 +43,7 @@ internal sealed class NativeConfiguration : IDisposable
         baselineKeys = system.m_KeyConfigText ?? "";
         var video = system.m_VideoSetting;
         baselineFullscreen = video.m_IsFullScreen; baselineVsync = video.m_IsVSync; baselineResolution = video.m_ResolutionScale;
-        baselineRuntime = input.OutText();
+        baselineRuntime = ReadRuntimeBindings();
         baseline = ParseBindings(baselineRuntime);
         initialized = true;
         var backup = Path.Combine(PluginData.Root, "native-baseline.json");
@@ -78,7 +81,7 @@ internal sealed class NativeConfiguration : IDisposable
                 log.LogWarning("Could not apply the plugin binding profile; using the native baseline. " + error.Message);
             }
         }
-        lastRuntime = input.OutText();
+        lastRuntime = ReadRuntimeBindings();
         if (!File.Exists(PluginData.BindingsPath)) Save(force: true);
         log.LogInfo("Native binding baseline captured; plugin rebinding and video overrides are isolated from native profile saves.");
     }
@@ -86,7 +89,7 @@ internal sealed class NativeConfiguration : IDisposable
     public void Save(bool force = false)
     {
         if (!initialized || input == null) return;
-        var current = input.OutText();
+        var current = ReadRuntimeBindings();
         if (!force && current == lastRuntime) return;
         var values = ParseBindings(current);
         var changes = new List<JsonElement>();
@@ -123,6 +126,16 @@ internal sealed class NativeConfiguration : IDisposable
         return result;
     }
     private static string SerializeBindings(Dictionary<string, JsonElement> values) => JsonSerializer.Serialize(new { bindings = values.Values });
+
+    private string ReadRuntimeBindings()
+    {
+        if (input == null) return "";
+        var result = "";
+        if (withNativeBindings == null) result = input.OutText();
+        else withNativeBindings(() => result = input.OutText());
+        return result;
+    }
+
     private void RefreshActions()
     {
         foreach (var item in input!.InputObjectList) item?.UpdateInputAction();
