@@ -40,9 +40,15 @@ internal sealed class GalleryInputBindings : IDisposable
 
     public void Tick(bool shouldApply)
     {
-        if (shouldApply == active) return;
-        if (shouldApply) Apply();
-        else Restore();
+        if (shouldApply != active)
+        {
+            if (shouldApply) Apply();
+            else Restore();
+        }
+        // Native Gallery code can refresh localized guide text after Setup,
+        // so keep the visible hints synchronized while the Gallery is open.
+        var currentGuide = CurrentGuide();
+        if (active && currentGuide != null) RefreshGuide(currentGuide, true);
     }
 
     // Native configuration serialization must see the original bindings, not
