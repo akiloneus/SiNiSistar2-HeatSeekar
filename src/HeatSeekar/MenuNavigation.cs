@@ -219,6 +219,16 @@ internal sealed class MenuNavigation : IDisposable
             Focus(target);
             return;
         }
+        if (current.IsSelfHandlingActive && EventSystem.current != null)
+        {
+            // Self-handling pages expect UGUI's native submit event. A plain
+            // BaseEventData also bypasses the pointer-only suppression patch.
+            ExecuteEvents.Execute(
+                target!.gameObject,
+                new BaseEventData(EventSystem.current),
+                ExecuteEvents.submitHandler);
+            return;
+        }
         current.Select(target!);
     }
 
