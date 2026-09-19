@@ -3,6 +3,7 @@ using HarmonyLib;
 using SiNiSistar2;
 using SiNiSistar2.Manager;
 using SiNiSistar2.Obj;
+using SiNiSistar2.UI;
 using SiNiSistar2.UI.ToggleParts;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -153,6 +154,16 @@ internal static class GalleryButtonGuideSetupPatch
     {
         try { Plugin.Runtime?.Menu.RefreshGalleryButtonGuide(__instance); }
         catch (Exception error) { Plugin.Runtime?.Warn("Gallery button guide", error); }
+    }
+}
+
+[HarmonyPatch(typeof(ButtonIcon), nameof(ButtonIcon.DisplayUpdate))]
+internal static class GalleryButtonIconDisplayPatch
+{
+    private static void Postfix(ButtonIcon __instance)
+    {
+        try { Plugin.Runtime?.Menu.RefreshGalleryButtonIcon(__instance); }
+        catch (Exception error) { Plugin.Runtime?.Warn("Gallery button icon", error); }
     }
 }
 

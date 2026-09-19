@@ -1,6 +1,6 @@
 using SiNiSistar2;
+using SiNiSistar2.UI;
 using SiNiSistar2.UI.Gallery;
-using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -17,6 +17,7 @@ internal sealed class GalleryInputBindings : IDisposable
     {
         public Text Component = null!;
         public string Original = "";
+        public string Replacement = "";
     }
 
     private readonly List<Replacement> replacements = new();
@@ -66,31 +67,93 @@ internal sealed class GalleryInputBindings : IDisposable
     }
 
     public void RefreshGuide(ButtonGuideUI target, bool nativeSetup = false)
+        => RefreshGuide(target, CurrentAnimationViewer(), nativeSetup);
+
+    internal void RefreshGuide(ButtonGuideUI target, Transform? animationViewer, bool nativeSetup)
     {
         if (!active || target == null) return;
         if (guide != null && guide.Pointer != target.Pointer) RestoreGuideText();
         guide = target;
         var seen = new HashSet<IntPtr>();
-        foreach (var text in target.GetComponentsInChildren<Text>(true))
-        {
-            if (text == null) continue;
-            seen.Add(text.Pointer);
-            var state = guideTexts.FirstOrDefault(item => item.Component.Pointer == text.Pointer);
-            var mapped = MapGuideText(text.text);
-            if (state == null)
-            {
-                if (mapped == text.text) continue;
-                state = new GuideText { Component = text, Original = text.text };
-                guideTexts.Add(state);
-            }
-            else if (nativeSetup && text.text != MapGuideText(state.Original))
-            {
-                state.Original = text.text;
-            }
-            mapped = MapGuideText(state.Original);
-            if (text.text != mapped) text.text = mapped;
-        }
+        foreach (var icon in target.GetComponentsInChildren<ButtonIcon>(true))
+            RefreshButtonIcon(icon, nativeSetup, seen);
+        RefreshGuideText(FindGuideButtonText(animationViewer, "Guide_Slow") ?? target.m_SlowModeText,
+            "S", "l", nativeSetup, seen);
+        RefreshGuideText(FindGuideButtonText(animationViewer, "Guide_Stop") ?? target.m_PauseModeText,
+            "Space", "p", nativeSetup, seen);
         guideTexts.RemoveAll(item => item.Component == null || !seen.Contains(item.Component.Pointer));
+    }
+
+    public void RefreshButtonIcon(ButtonIcon? icon)
+    {
+        if (!active || icon == null) return;
+        RefreshButtonIcon(icon, false, null);
+    }
+
+    private void RefreshButtonIcon(ButtonIcon icon, bool nativeSetup, HashSet<IntPtr>? seen)
+    {
+        var text = icon.m_ButtonText;
+        if (text == null || !TryGetReplacement(icon.m_SiNiInputType, text.text, out var original, out var replacement)) return;
+        if (icon.m_SiNiInputObject != null)
+        {
+            var device = icon.m_SiNiInputObject.CalcMainDeviceType();
+            if (device != MainDeviceType.Keyboard && device != MainDeviceType.None) return;
+        }
+
+        seen?.Add(text.Pointer);
+        var state = guideTexts.FirstOrDefault(item => item.Component.Pointer == text.Pointer);
+        if (state == null)
+        {
+            if (!string.Equals(text.text, original, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(text.text, replacement, StringComparison.OrdinalIgnoreCase)) return;
+            state = new GuideText
+            {
+                Component = text,
+                Original = string.Equals(text.text, replacement, StringComparison.OrdinalIgnoreCase) ? original : text.text,
+                Replacement = replacement
+            };
+            guideTexts.Add(state);
+        }
+        else if (nativeSetup
+            && !string.Equals(text.text, replacement, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(text.text, state.Original, StringComparison.Ordinal))
+        {
+            state.Original = text.text;
+        }
+
+        if (!string.Equals(text.text, state.Replacement, StringComparison.Ordinal))
+            text.text = state.Replacement;
+    }
+
+    private void RefreshGuideText(Text? text, string original, string replacement,
+        bool nativeSetup, HashSet<IntPtr> seen)
+    {
+        if (text == null) return;
+        seen.Add(text.Pointer);
+        var state = guideTexts.FirstOrDefault(item => item.Component.Pointer == text.Pointer);
+        if (state == null)
+        {
+            if (!string.Equals(text.text, original, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(text.text, replacement, StringComparison.OrdinalIgnoreCase)) return;
+            state = new GuideText
+            {
+                Component = text,
+                Original = string.Equals(text.text, replacement, StringComparison.OrdinalIgnoreCase)
+                    ? original
+                    : text.text,
+                Replacement = replacement
+            };
+            guideTexts.Add(state);
+        }
+        else if (nativeSetup
+            && !string.Equals(text.text, replacement, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(text.text, state.Original, StringComparison.Ordinal))
+        {
+            state.Original = text.text;
+        }
+
+        if (!string.Equals(text.text, state.Replacement, StringComparison.Ordinal))
+            text.text = state.Replacement;
     }
 
     private void Apply()
@@ -137,8 +200,8 @@ internal sealed class GalleryInputBindings : IDisposable
         foreach (var state in guideTexts)
         {
             if (state.Component == null) continue;
-            var mapped = MapGuideText(state.Original);
-            if (state.Component.text == mapped) state.Component.text = state.Original;
+            if (string.Equals(state.Component.text, state.Replacement, StringComparison.Ordinal))
+                state.Component.text = state.Original;
         }
         guideTexts.Clear();
         guide = null;
@@ -147,20 +210,85 @@ internal sealed class GalleryInputBindings : IDisposable
     private static ButtonGuideUI? CurrentGuide()
         => GameContext.Managers?.m_Gallery?.GalleryUI?.ButtonGuideUI;
 
-    private static string MapGuideText(string value)
+    private static Transform? CurrentAnimationViewer()
+        => GameContext.Managers?.m_Gallery?.GalleryUI?.AnimationViewer?.transform;
+
+    private static Text? FindGuideButtonText(Transform? animationViewer, string guideName)
     {
-        var mapped = ReplaceKey(value, "space", "p");
-        mapped = ReplaceKey(mapped, "a", "q");
-        mapped = ReplaceKey(mapped, "d", "e");
-        return ReplaceKey(mapped, "s", "l");
+        var guide = FindDescendant(animationViewer, guideName);
+        var buttonText = FindDescendant(guide, "ButtonText");
+        if (buttonText == null) return null;
+        var text = buttonText.GetComponent<Text>();
+        if (text != null) return text;
+        return FindDescendant(buttonText, "Text")?.GetComponent<Text>();
     }
 
-    private static string ReplaceKey(string value, string key, string replacement)
-        => Regex.Replace(
-            value,
-            $@"(?<![A-Za-z0-9]){Regex.Escape(key)}(?![A-Za-z0-9])",
-            match => char.IsUpper(match.Value[0]) ? replacement.ToUpperInvariant() : replacement,
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static Transform? FindDescendant(Transform? parent, string name)
+    {
+        if (parent == null) return null;
+        for (var index = 0; index < parent.childCount; index++)
+        {
+            var child = parent.GetChild(index);
+            if (string.Equals(child.name, name, StringComparison.Ordinal)) return child;
+            var nested = FindDescendant(child, name);
+            if (nested != null) return nested;
+        }
+        return null;
+    }
+
+    private static bool TryGetReplacement(SiNiInputType type, string currentText,
+        out string original, out string replacement)
+    {
+        switch (type)
+        {
+            case SiNiInputType.GalleryPrevEnemy:
+                original = "A";
+                replacement = "q";
+                return true;
+            case SiNiInputType.GalleryNextEnemy:
+                original = "D";
+                replacement = "e";
+                return true;
+            case SiNiInputType.GallerySlow:
+                original = "S";
+                replacement = "l";
+                return true;
+            case SiNiInputType.GalleryPause:
+                original = "Space";
+                replacement = "p";
+                return true;
+        }
+
+        // Some native Gallery icons do not carry a usable SiNiInputObject.
+        // In that case the visible key label is the reliable keyboard hint.
+        switch (currentText.Trim().ToUpperInvariant())
+        {
+            case "A":
+            case "Q":
+                original = "A";
+                replacement = "q";
+                return true;
+            case "D":
+            case "E":
+                original = "D";
+                replacement = "e";
+                return true;
+            case "S":
+            case "L":
+                original = "S";
+                replacement = "l";
+                return true;
+            case "SPACE":
+            case "P":
+                original = "Space";
+                replacement = "p";
+                return true;
+            default:
+                original = "";
+                replacement = "";
+                return false;
+        }
+    }
 
     public void Dispose()
     {

@@ -72,6 +72,7 @@ internal sealed class Runtime : IDisposable
             Entries.Tick();
             Pages.Tick();
             Rebinding.Tick();
+            UiBindings.SetEnabled(settings.MenuNavigation.Value);
             Menu.Tick(settings.MenuNavigation.Value || Pages.IsOpen);
             var gameplay = GetGameplay();
             var menu = Menu.Active;
@@ -116,7 +117,7 @@ internal sealed class Runtime : IDisposable
 
     internal void InputReady(SiNiSistar2.InputManager input)
     {
-        UiBindings.Attach(input);
+        UiBindings.Attach(input, settings.MenuNavigation.Value);
         Menu.SetInput(input);
     }
 

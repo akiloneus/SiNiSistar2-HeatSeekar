@@ -84,8 +84,9 @@ internal sealed class MenuNavigation : IDisposable
             rebuildPending = false;
         }
         var frame = ui.Read();
-        var ownGalleryInput = enabled && IsGalleryOpen() && Application.isFocused && !ExternalUi.IsOpen;
-        galleryBindings?.Tick(ownGalleryInput);
+        var galleryOpen = enabled && IsGalleryOpen();
+        galleryBindings?.Tick(galleryOpen);
+        var ownGalleryInput = galleryOpen && Application.isFocused && !ExternalUi.IsOpen;
         if (ownGalleryInput)
         {
             // Gallery keys are native controls. Escape still returns through
@@ -201,6 +202,7 @@ internal sealed class MenuNavigation : IDisposable
         {
             nextScroll = Time.unscaledTime + 0.05f;
             if (policy.SlotFocus) MoveSlot(frame.Scroll > 0 ? -1 : 1);
+            else if (Slot(logical) != null) WheelTraverse(frame.Scroll > 0 ? -1 : 1);
             else Traverse(frame.Scroll > 0 ? -1 : 1);
         }
         if (frame.Click && policy.PointerActive)
@@ -288,6 +290,24 @@ internal sealed class MenuNavigation : IDisposable
         var anchor = group.Length > 0 ? group[0] : logical;
         var index = Array.FindIndex(entries, entry => entry == anchor);
         Focus(entries[MenuPolicy.Wrap(index, step, entries.Length)]);
+    }
+
+    private void WheelTraverse(int step)
+    {
+        var entries = WheelEntries();
+        var index = Array.FindIndex(entries, entry => entry == logical);
+        if (index < 0) return;
+        Focus(entries[MenuPolicy.Wrap(index, step, entries.Length)]);
+    }
+
+    private Toggle[] WheelEntries()
+    {
+        var entries = new List<Toggle>();
+        // BindingGroup preserves the native page order. Reordering by Selectable
+        // links changes movement slots to Down/Left/Right/Up instead of the
+        // visible Up/Down/Right/Left order.
+        foreach (var row in RowEntries()) entries.AddRange(BindingGroup(row));
+        return entries.ToArray();
     }
 
     private void Move(int x, int y)
@@ -501,7 +521,6 @@ internal sealed class MenuNavigation : IDisposable
 
     public void Suspend()
     {
-        galleryBindings?.Tick(false);
         SuspendCurrent();
     }
 
@@ -531,4 +550,7 @@ internal sealed class MenuNavigation : IDisposable
 
     internal void RefreshGalleryButtonGuide(ButtonGuideUI guide)
         => galleryBindings?.RefreshGuide(guide, true);
+
+    internal void RefreshGalleryButtonIcon(ButtonIcon icon)
+        => galleryBindings?.RefreshButtonIcon(icon);
 }

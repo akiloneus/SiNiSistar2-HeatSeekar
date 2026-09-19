@@ -9,16 +9,41 @@ internal sealed class NativeUiBindings : IDisposable
 {
     private readonly List<(InputAction Action, string Id)> added = new();
     private IntPtr submitPointer;
+    private GameInput? input;
+    private bool enabled;
     private const string Group = "HeatSeekar.UI";
 
-    public void Attach(GameInput input)
+    public void Attach(GameInput input, bool enabled)
     {
-        var submit = input.UISubmit;
-        if (submit == null || submitPointer == submit.Pointer) return;
-        Dispose();
-        submitPointer = submit.Pointer;
+        this.input = input;
+        this.enabled = enabled;
+        Apply();
+    }
+
+    public void SetEnabled(bool value)
+    {
+        if (enabled == value) return;
+        enabled = value;
+        Apply();
+    }
+
+    private void Apply()
+    {
+        var manager = input;
+        var submit = manager?.UISubmit;
+        if (!enabled || manager == null || submit == null)
+        {
+            RemoveAdded();
+            submitPointer = IntPtr.Zero;
+            return;
+        }
+        if (submitPointer != submit.Pointer)
+        {
+            RemoveAdded();
+            submitPointer = submit.Pointer;
+        }
         Add(submit, "<Keyboard>/enter", "<Keyboard>/numpadEnter", "<Keyboard>/space", "<Keyboard>/j", "<Keyboard>/numpad4", "<Mouse>/leftButton");
-        Add(input.UICancel, "<Keyboard>/escape", "<Keyboard>/numpad5", "<Mouse>/rightButton");
+        Add(manager.UICancel, "<Keyboard>/escape", "<Keyboard>/numpad5", "<Mouse>/rightButton");
     }
 
     private void Add(InputAction? action, params string[] paths)
@@ -35,13 +60,20 @@ internal sealed class NativeUiBindings : IDisposable
         }
     }
 
-    public void Dispose()
+    private void RemoveAdded()
     {
         foreach (var (action, id) in added)
             for (var index = action.bindings.Count - 1; index >= 0; index--)
                 if (action.bindings[index].id.ToString() == id && action.bindings[index].groups == Group)
                 { action.ChangeBinding(index).Erase(); break; }
         added.Clear();
+    }
+
+    public void Dispose()
+    {
+        RemoveAdded();
+        input = null;
+        enabled = false;
         submitPointer = IntPtr.Zero;
     }
 }

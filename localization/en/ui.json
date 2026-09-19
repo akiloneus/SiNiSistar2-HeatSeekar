@@ -1,7 +1,7 @@
 {
-  "ui_help_back": "Return to the game menu. Settings are saved automatically.",
+  "ui_help_back": "",
   "ui_help_background_audio": "Mute game audio while the game window is not focused.",
-  "ui_help_bindings": "Q: clear a binding. R: restore its default. These shortcuts apply outside key capture.",
+  "ui_help_bindings": "[Q] clear a binding. [R] restore its default.",
   "ui_help_cheat_warning": "(Not recommended) CHEAT: Enabling this feature will alter the game's original design and intended experience.",
   "ui_help_confine_cursor": "Keep the pointer inside the game window during gameplay.",
   "ui_help_console": "Show BepInEx's console for log output.",
