@@ -247,10 +247,12 @@ internal sealed class MenuNavigation : IDisposable
             Focus(target);
             return;
         }
-        if (current.IsSelfHandlingActive && EventSystem.current != null)
+        if ((current.IsSelfHandlingActive || current.TryCast<GamePlayUI>() != null) && EventSystem.current != null)
         {
-            // Self-handling pages expect UGUI's native submit event. A plain
-            // BaseEventData also bypasses the pointer-only suppression patch.
+            // Gameplay uses the ordinary selection loop, but its checkboxes
+            // update settings through Toggle.onValueChanged. Like self-handling
+            // pages, it needs UGUI submit before the native selection callback.
+            // BaseEventData bypasses our pointer-only suppression patch.
             ExecuteEvents.Execute(
                 target!.gameObject,
                 new BaseEventData(EventSystem.current),
