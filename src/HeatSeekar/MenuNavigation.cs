@@ -45,6 +45,7 @@ internal sealed class MenuNavigation : IDisposable
     public ToggleListUI? Current => current;
     internal bool SlotFocused => policy.SlotFocus;
     internal bool IdlePointerVisible => idlePolicy.PointerActive;
+    internal bool GalleryPointerVisible => galleryBindings?.Active == true && idlePolicy.PointerActive;
 
     public MenuNavigation(NativeRebinding rebinding, ManualLogSource log, UiInput ui, NativeMenuInteraction interaction)
     {
@@ -161,6 +162,8 @@ internal sealed class MenuNavigation : IDisposable
         if (frame.NonPointerInput) pointerArmed = false;
         else if (moved) pointerArmed = true;
         if (policy.PointerActive) policy.LeaveSlots();
+        if (frame.Click && policy.PointerActive && galleryBindings?.Active == true
+            && !PointerBlocked(position, ValidToggles()) && galleryBindings.ClickGuide(position, current)) return;
         // An explicit new click may act at the pointer even before it moves;
         // the click that opened this page was already consumed during entry.
         var hovered = policy.PointerActive && (pointerArmed || frame.Click) ? HitTest(position) : null;
@@ -187,6 +190,7 @@ internal sealed class MenuNavigation : IDisposable
         }
         if (frame.Cancel)
         {
+            if (galleryBindings?.RevealOnCancel(current) == true) return;
             Cancel();
             return;
         }
@@ -406,10 +410,26 @@ internal sealed class MenuNavigation : IDisposable
 
     internal Toggle? HitTest(Vector2 position)
     {
+        var toggles = ValidToggles();
+        if (PointerBlocked(position, toggles)) return null;
+        // Some native pages have no raycastable graphics because the original UI
+        // only expects keyboard/gamepad navigation. Their Selectable rectangles
+        // still define the correct mouse targets without changing game assets.
+        foreach (var toggle in toggles.Reverse())
+        {
+            if (Plugin.Runtime?.Pages.AllowsPointer(toggle, position) == false) continue;
+            var rect = toggle.GetComponent<RectTransform>();
+            if ((rect != null && UiGeometry.Contains(rect, position)) || ArrowDirection(toggle, position) != 0) return toggle;
+        }
+        return null;
+    }
+
+    // Both menu rows and Gallery hints respect foreground plugin canvases.
+    private bool PointerBlocked(Vector2 position, Toggle[] toggles)
+    {
         // Flexible choice dialogs rebuild their layout after animation each
         // frame. Resolve it before hit testing, just as Unity does before drawing.
         if (layoutFrame != Time.frameCount) { Canvas.ForceUpdateCanvases(); layoutFrame = Time.frameCount; }
-        var toggles = ValidToggles();
         var events = EventSystem.current;
         // ChoiceDialog owns its canvas as a child, not as an ancestor.
         var nativeCanvases = toggles.Select(toggle => toggle.GetComponentInParent<Canvas>())
@@ -425,19 +445,10 @@ internal sealed class MenuNavigation : IDisposable
                 var canvas = result.gameObject.GetComponentInParent<Canvas>();
                 if (canvas == null) continue;
                 if (nativeCanvases.Contains(canvas.rootCanvas.Pointer)) break;
-                return null;
+                return true;
             }
         }
-        // Some native pages have no raycastable graphics because the original UI
-        // only expects keyboard/gamepad navigation. Their Selectable rectangles
-        // still define the correct mouse targets without changing game assets.
-        foreach (var toggle in toggles.Reverse())
-        {
-            if (Plugin.Runtime?.Pages.AllowsPointer(toggle, position) == false) continue;
-            var rect = toggle.GetComponent<RectTransform>();
-            if ((rect != null && UiGeometry.Contains(rect, position)) || ArrowDirection(toggle, position) != 0) return toggle;
-        }
-        return null;
+        return false;
     }
 
     private static int ArrowDirection(Toggle toggle, Vector2 position)

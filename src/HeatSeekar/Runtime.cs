@@ -98,7 +98,8 @@ internal sealed class Runtime : IDisposable
             Cursor.lockState = gameplay && settings.ConfineCursor.Value ? CursorLockMode.Confined : CursorLockMode.None;
             if (mouse == null) { cursor.Hide(); return; }
             var position = mouse.position.ReadValue();
-            var show = menu ? Menu.PointerVisible : titleIdle || menuTransition ? Menu.IdlePointerVisible : gameplay && settings.AimEnabled.Value;
+            var show = menu ? Menu.PointerVisible : Menu.GalleryPointerVisible
+                || (titleIdle || menuTransition ? Menu.IdlePointerVisible : gameplay && settings.AimEnabled.Value);
             if (gameplay && Aspect.Active) show &= Aspect.PixelRect.Contains(position);
             show &= position.x >= 0 && position.y >= 0 && position.x < Screen.width && position.y < Screen.height;
             if (show && !cursorFaulted)
