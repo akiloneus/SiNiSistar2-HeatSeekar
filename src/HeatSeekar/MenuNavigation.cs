@@ -17,6 +17,7 @@ internal sealed class MenuNavigation : IDisposable
     private readonly ManualLogSource log;
     private readonly NativeRebinding rebinding;
     private readonly UiInput ui;
+    private readonly NativeMenuInteraction interaction;
     private GalleryInputBindings? galleryBindings;
     private readonly MenuPolicy policy = new();
     private readonly MenuPolicy idlePolicy = new();
@@ -34,7 +35,6 @@ internal sealed class MenuNavigation : IDisposable
     private bool suppressed;
     private bool loggedMenu;
     private bool navigationEnabled;
-    private bool pointerHorizontal;
     private bool pointerArmed;
     private int layoutFrame = -1;
     private float nextMenuScan;
@@ -46,10 +46,10 @@ internal sealed class MenuNavigation : IDisposable
     internal bool SlotFocused => policy.SlotFocus;
     internal bool IdlePointerVisible => idlePolicy.PointerActive;
 
-    public MenuNavigation(NativeRebinding rebinding, ManualLogSource log)
+    public MenuNavigation(NativeRebinding rebinding, ManualLogSource log, UiInput ui, NativeMenuInteraction interaction)
     {
         this.rebinding = rebinding; this.log = log;
-        ui = new UiInput();
+        this.ui = ui; this.interaction = interaction;
     }
 
     public void SetInput(GameInput manager)
@@ -210,12 +210,7 @@ internal sealed class MenuNavigation : IDisposable
             if (hovered != null)
             {
                 var direction = ArrowDirection(hovered, position);
-                if (direction != 0)
-                {
-                    pointerHorizontal = true;
-                    try { if (Plugin.Runtime?.Pages.Horizontal(hovered, direction) != true) current.OnInputHorizontal(hovered, direction); }
-                    finally { pointerHorizontal = false; }
-                }
+                if (direction != 0) interaction.Horizontal(current, hovered, direction, pointerClick: true);
                 else Confirm(hovered, true);
             }
         }
@@ -247,19 +242,7 @@ internal sealed class MenuNavigation : IDisposable
             Focus(target);
             return;
         }
-        if ((current.IsSelfHandlingActive || current.TryCast<GamePlayUI>() != null) && EventSystem.current != null)
-        {
-            // Gameplay uses the ordinary selection loop, but its checkboxes
-            // update settings through Toggle.onValueChanged. Like self-handling
-            // pages, it needs UGUI submit before the native selection callback.
-            // BaseEventData bypasses our pointer-only suppression patch.
-            ExecuteEvents.Execute(
-                target!.gameObject,
-                new BaseEventData(EventSystem.current),
-                ExecuteEvents.submitHandler);
-            return;
-        }
-        current.Select(target!);
+        interaction.Confirm(current, target!);
     }
 
     private void Cancel()
@@ -349,10 +332,7 @@ internal sealed class MenuNavigation : IDisposable
             edge = opposite;
         }
         if (edge != logical) Focus(edge);
-        else if (x != 0)
-        {
-            if (Plugin.Runtime?.Pages.Horizontal(logical, x) != true) current!.OnInputHorizontal(logical, x);
-        }
+        else if (x != 0) interaction.Horizontal(current!, logical, x);
         else Traverse(y > 0 ? -1 : 1);
     }
 
@@ -459,8 +439,6 @@ internal sealed class MenuNavigation : IDisposable
         }
         return null;
     }
-
-    internal bool AllowLanguageHorizontal() => pointerHorizontal || ui.ConsumeLanguageDirection();
 
     private static int ArrowDirection(Toggle toggle, Vector2 position)
     {

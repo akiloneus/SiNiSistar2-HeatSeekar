@@ -107,38 +107,29 @@ internal static class MenuRegistrationPatch
 [HarmonyPatch(typeof(ToggleListUI), nameof(ToggleListUI.Select))]
 internal static class SettingsEntryPatch
 {
-    internal static bool Prefix(ToggleListUI __instance, UnityEngine.UI.Toggle __0)
-    {
-        var runtime = Plugin.Runtime;
-        if (runtime == null) return true;
-        try
-        {
-            if (runtime.Entries.IsEntry(__0)) return runtime.Pages.RouteOpen(__instance, __0);
-            return !runtime.Pages.Activate(__instance, __0);
-        }
-        catch (Exception error) { runtime.Warn("Native settings action", error); return true; }
-    }
+    private static bool Prefix(ToggleListUI __instance, UnityEngine.UI.Toggle __0)
+        => Plugin.Runtime?.MenuInteraction.BeforeSelect(__instance, __0) != false;
 }
 
 [HarmonyPatch(typeof(SiNiSistar2.UI.Pause.VideoUI), nameof(SiNiSistar2.UI.Pause.VideoUI.OnInputHorizontal))]
 internal static class GraphicsHorizontalPatch
 {
-    private static bool Prefix(UnityEngine.UI.Toggle __0, int __1) => Plugin.Runtime?.Pages.Horizontal(__0, __1) != true;
+    private static bool Prefix(SiNiSistar2.UI.Pause.VideoUI __instance, UnityEngine.UI.Toggle __0, int __1)
+        => Plugin.Runtime?.MenuInteraction.BeforeHorizontal(__instance, __0, __1) != false;
 }
 
 [HarmonyPatch(typeof(SiNiSistar2.UI.Pause.AudioUI), nameof(SiNiSistar2.UI.Pause.AudioUI.OnInputHorizontal))]
 internal static class AudioHorizontalPatch
 {
-    private static bool Prefix(UnityEngine.UI.Toggle __0, int __1) => Plugin.Runtime?.Pages.Horizontal(__0, __1) != true;
+    private static bool Prefix(SiNiSistar2.UI.Pause.AudioUI __instance, UnityEngine.UI.Toggle __0, int __1)
+        => Plugin.Runtime?.MenuInteraction.BeforeHorizontal(__instance, __0, __1) != false;
 }
 
 [HarmonyPatch(typeof(SiNiSistar2.UI.Pause.SettingUI), nameof(SiNiSistar2.UI.Pause.SettingUI.OnInputHorizontal))]
 internal static class LanguageDirectionPatch
 {
-    // Language loading temporarily releases menu ownership. Guard the native
-    // entry too, so a held controller direction cannot become a second press.
-    private static bool Prefix(SiNiSistar2.UI.Pause.SettingUI __instance, UnityEngine.UI.Toggle __0)
-        => __0 != __instance.m_Language || Plugin.Runtime?.Menu.AllowLanguageHorizontal() != false;
+    private static bool Prefix(SiNiSistar2.UI.Pause.SettingUI __instance, UnityEngine.UI.Toggle __0, int __1)
+        => Plugin.Runtime?.MenuInteraction.BeforeHorizontal(__instance, __0, __1) != false;
 }
 
 [HarmonyPatch(typeof(SiNiSistar2.UI.Pause.VideoUI), nameof(SiNiSistar2.UI.Pause.VideoUI.Setup))]
@@ -186,7 +177,7 @@ internal static class NativeSettingsSubmitPatch
         var owner = NativeMenuCallbacks.Owner(__instance);
         return !(__0?.TryCast<UnityEngine.EventSystems.PointerEventData>() != null
             && Plugin.Runtime?.Menu.SuppressNativePointer(owner) == true)
-            && SettingsEntryPatch.Prefix(owner, NativeMenuCallbacks.Toggle(__instance));
+            && Plugin.Runtime?.MenuInteraction.BeforeSelect(owner, NativeMenuCallbacks.Toggle(__instance)) != false;
     }
 }
 

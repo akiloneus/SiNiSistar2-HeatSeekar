@@ -30,6 +30,7 @@ internal sealed class Runtime : IDisposable
     public NativeMenuEntries Entries { get; }
     public Localization Text { get; }
     public NativeSettingsPages Pages { get; }
+    public NativeMenuInteraction MenuInteraction { get; }
     public AspectDisplay Aspect { get; }
     public InterfaceOptions Interface { get; }
     private readonly LogConsole console;
@@ -50,9 +51,11 @@ internal sealed class Runtime : IDisposable
         Aspect = new AspectDisplay(Display);
         Options = new SettingsModel(settings, Display, Text);
         Pages = new NativeSettingsPages(Options, Text, log);
-        Menu = new MenuNavigation(Rebinding, log);
-        Configuration.SetNativeBindingScope(Menu.WithNativeBindings);
         Entries = new NativeMenuEntries(log, Text);
+        var ui = new UiInput();
+        MenuInteraction = new NativeMenuInteraction(Entries, Pages, ui.ConsumeLanguageDirection, Warn);
+        Menu = new MenuNavigation(Rebinding, log, ui, MenuInteraction);
+        Configuration.SetNativeBindingScope(Menu.WithNativeBindings);
     }
 
     public void Tick()
