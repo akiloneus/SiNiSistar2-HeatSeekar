@@ -6,9 +6,9 @@ HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindi
 
 ## Download
 
-Current release: [**HeatSeekar 0.8.3**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
+Get the [**latest HeatSeekar release**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
 
-**0.8.3 update:** Fixes Gallery navigation and menu input-state regressions with **Aki menu navigation** enabled. Gallery now uses Q/E to change pages, L for slow motion, and P for stop, while the on-screen guide labels update with the active bindings. Enhanced confirm/back bindings are removed correctly when the feature is disabled.
+Version details and changes are listed in the release notes on GitHub.
 
 | Package | Choose this if… |
 | --- | --- |
@@ -23,6 +23,7 @@ The latest release includes both packages. GitHub's automatic **Source code** do
 ## Features
 
 - **Native mouse support:** Bind mouse buttons directly to in-game actions and navigate menus with the mouse.
+- **Gallery controls:** With Aki menu navigation enabled, click the on-screen hints to use their actions. Keycaps darken slightly on hover; Q/E change characters, L toggles slow motion, and P toggles pause.
 - **Display options:** Adjust resolution, borderless fullscreen, V-sync, and frame-rate limits, with support for preserving the original 2:1 aspect ratio.
 - **Mute in background:** Mute game audio while the game window is not focused.
 - **Audio menu fix:** Keep volume values visible at higher resolutions.
