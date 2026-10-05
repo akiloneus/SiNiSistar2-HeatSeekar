@@ -48,8 +48,15 @@ internal sealed class NativeConfiguration : IDisposable
         initialized = true;
         var backup = Path.Combine(PluginData.Root, "native-baseline.json");
         if (!File.Exists(backup))
-            PluginData.WriteAtomic(backup, JsonSerializer.Serialize(new { version = 1, capturedUtc = DateTime.UtcNow,
-                keyConfigText = baselineKeys, fullscreen = baselineFullscreen, vsync = baselineVsync, resolutionScale = baselineResolution }, jsonOptions));
+            PluginData.WriteAtomic(backup, JsonSerializer.Serialize(new
+            {
+                version = 1,
+                capturedUtc = DateTime.UtcNow,
+                keyConfigText = baselineKeys,
+                fullscreen = baselineFullscreen,
+                vsync = baselineVsync,
+                resolutionScale = baselineResolution
+            }, jsonOptions));
         var legacy = baseline.Values.Any(value => value.TryGetProperty("path", out var path)
             && (path.GetString() == "" || path.GetString()?.StartsWith("<Mouse>", StringComparison.OrdinalIgnoreCase) == true));
         if (legacy)
@@ -139,14 +146,21 @@ internal sealed class NativeConfiguration : IDisposable
     private void RefreshActions()
     {
         foreach (var item in input!.InputObjectList) item?.UpdateInputAction();
-        Plugin.Runtime?.Menu.RefreshBindings();
+        Plugin.Runtime?.Inputs.RefreshBindings();
     }
     public void Dispose()
     {
         if (!initialized) return;
-        Save();
-        if (map != null) { map.Cast<IInputActionCollection2>().LoadBindingOverridesFromJson(baselineRuntime); RefreshActions(); }
-        if (system != null) system.m_KeyConfigText = baselineKeys;
-        initialized = false;
+        try { Save(); }
+        catch (Exception error) { log.LogError("Could not persist HeatSeekar bindings during unload: " + error); }
+        try
+        {
+            if (map != null) { map.Cast<IInputActionCollection2>().LoadBindingOverridesFromJson(baselineRuntime); RefreshActions(); }
+        }
+        finally
+        {
+            if (system != null) system.m_KeyConfigText = baselineKeys;
+            initialized = false;
+        }
     }
 }

@@ -16,25 +16,19 @@ internal sealed class MenuNavigation : IDisposable
 {
     private readonly ManualLogSource log;
     private readonly NativeRebinding rebinding;
-    private readonly UiInput ui;
+    private readonly MenuInputLifecycle inputs;
     private readonly NativeMenuInteraction interaction;
-    private GalleryInputBindings? galleryBindings;
+    private GalleryInputBindings? galleryBindings => inputs.Gallery;
     private readonly MenuPolicy policy = new();
     private readonly MenuPolicy idlePolicy = new();
     private readonly List<ToggleListUI> menus = new();
-    private readonly List<InputAction> disabledActions = new();
     private readonly Il2CppSystem.Collections.Generic.List<RaycastResult> raycasts = new();
-    private GameInput? input;
     private ToggleListUI? current;
     private Toggle? logical;
-    private EventSystem? eventSystem;
     private Vector2 lastPointer;
     private int enteredFrame;
     private float nextScroll;
-    private bool rebuildPending;
-    private bool suppressed;
     private bool loggedMenu;
-    private bool navigationEnabled;
     private bool pointerArmed;
     private int layoutFrame = -1;
     private float nextMenuScan;
@@ -47,24 +41,12 @@ internal sealed class MenuNavigation : IDisposable
     internal bool IdlePointerVisible => idlePolicy.PointerActive;
     internal bool GalleryPointerVisible => galleryBindings?.Active == true && idlePolicy.PointerActive;
 
-    public MenuNavigation(NativeRebinding rebinding, ManualLogSource log, UiInput ui, NativeMenuInteraction interaction)
+    public MenuNavigation(MenuInputLifecycle inputs, ManualLogSource log, NativeMenuInteraction interaction)
     {
-        this.rebinding = rebinding; this.log = log;
-        this.ui = ui; this.interaction = interaction;
+        this.inputs = inputs; rebinding = inputs.Rebinding; this.log = log;
+        this.interaction = interaction;
     }
 
-    public void SetInput(GameInput manager)
-    {
-        if (input != null && input.Pointer == manager.Pointer) return;
-        ReleaseOwnership();
-        galleryBindings?.Dispose();
-        input = manager;
-        galleryBindings = new GalleryInputBindings(manager);
-        ui.SetNativeInput(manager);
-        rebuildPending = true;
-    }
-
-    public void RefreshBindings() => rebuildPending = true;
     public void Register(ToggleListUI menu)
     {
         if (!menus.Any(item => item != null && item.Pointer == menu.Pointer)) menus.Add(menu);
@@ -76,28 +58,13 @@ internal sealed class MenuNavigation : IDisposable
         if (current == menu) SuspendCurrent();
     }
 
-    public void Tick(bool enabled)
+    public void Tick(bool enhanced, bool pluginPageOpen = false)
     {
-        navigationEnabled = enabled;
-        if (rebuildPending && !rebinding.Active)
-        {
-            ui.Rebuild();
-            rebuildPending = false;
-        }
-        var frame = ui.Read();
-        var galleryOpen = enabled && IsGalleryOpen();
-        galleryBindings?.Tick(galleryOpen);
-        var ownGalleryInput = galleryOpen && Application.isFocused && !ExternalUi.IsOpen;
-        if (ownGalleryInput)
-        {
-            // Gallery keys are native controls. Escape still returns through
-            // the generic cancel path, while Pause/Clear/Reset stay native.
-            frame = frame with { Pause = false, Clear = false, Reset = false };
-        }
+        var frame = inputs.Read(enhanced, pluginPageOpen);
         var mouse = Mouse.current;
         var position = mouse == null ? Vector2.zero : mouse.position.ReadValue();
         idlePolicy.UpdatePointer((position - lastPointer).sqrMagnitude > 0.25f, frame.NonPointerInput);
-        if (!enabled || !Application.isFocused || ExternalUi.IsOpen)
+        if (!inputs.Available)
         {
             Suspend();
             lastPointer = position;
@@ -123,8 +90,7 @@ internal sealed class MenuNavigation : IDisposable
             return;
         }
         if (current != candidate) Enter(candidate, position);
-        AcquireOwnership();
-        EnsureSuppressed();
+        inputs.Select(candidate);
         Process(frame, position);
     }
 
@@ -159,22 +125,28 @@ internal sealed class MenuNavigation : IDisposable
             return;
         }
         SyncLogical();
+        // All pointer decisions in this input pass share one native layout and
+        // foreground raycast, before any selected row changes the page.
+        Toggle[]? pointerRows = null;
+        bool? blocked = null;
+        bool PointerBlockedHere() => blocked ??= PointerBlocked(position, pointerRows ??= ValidToggles());
+        Toggle? HitPointer() => PointerBlockedHere() ? null : HitRows(position, pointerRows!);
         // Q/R switch to focus mode, but their target is the slot that was under
         // the visible pointer before that switch, not the entire logical row.
-        var editTarget = (frame.Clear || frame.Reset) && ((policy.PointerActive && pointerArmed) || moved) ? HitTest(position) : null;
+        var editTarget = (frame.Clear || frame.Reset) && ((policy.PointerActive && pointerArmed) || moved) ? HitPointer() : null;
         policy.UpdatePointer(moved, frame.NonPointerInput);
         if (frame.NonPointerInput) pointerArmed = false;
         else if (moved) pointerArmed = true;
         if (policy.PointerActive) policy.LeaveSlots();
         if (galleryBindings?.Active == true)
         {
-            var pointerAvailable = policy.PointerActive && !PointerBlocked(position, ValidToggles());
+            var pointerAvailable = policy.PointerActive && !PointerBlockedHere();
             galleryBindings.HoverGuide(position, current, pointerAvailable);
             if (frame.Click && pointerAvailable && galleryBindings.ClickGuide(position, current)) return;
         }
         // An explicit new click may act at the pointer even before it moves;
         // the click that opened this page was already consumed during entry.
-        var hovered = policy.PointerActive && (pointerArmed || frame.Click) ? HitTest(position) : null;
+        var hovered = policy.PointerActive && (pointerArmed || frame.Click) ? HitPointer() : null;
         if (hovered != null && (hovered != logical || current.OnCursorToggle != hovered))
         {
             policy.LeaveSlots();
@@ -412,14 +384,19 @@ internal sealed class MenuNavigation : IDisposable
 
     internal bool IsPointerFocus(ToggleListUI owner) => current == owner && policy.PointerActive && pointerArmed;
 
-    internal bool SuppressNativePointer(ToggleListUI owner) => owner != null && Application.isFocused && !ExternalUi.IsOpen
-        && (navigationEnabled || Plugin.Runtime?.Pages.Owns(owner) == true)
+    internal bool SuppressNativePointer(ToggleListUI owner) => owner != null
+        && inputs.GuardPointer(Plugin.Runtime?.Pages.Owns(owner) == true)
         && menus.Any(menu => menu != null && menu.Pointer == owner.Pointer);
 
     internal Toggle? HitTest(Vector2 position)
     {
         var toggles = ValidToggles();
         if (PointerBlocked(position, toggles)) return null;
+        return HitRows(position, toggles);
+    }
+
+    private Toggle? HitRows(Vector2 position, Toggle[] toggles)
+    {
         // Some native pages have no raycastable graphics because the original UI
         // only expects keyboard/gamepad navigation. Their Selectable rectangles
         // still define the correct mouse targets without changing game assets.
@@ -469,55 +446,6 @@ internal sealed class MenuNavigation : IDisposable
         return 0;
     }
 
-    private void AcquireOwnership()
-    {
-        var events = EventSystem.current;
-        if (eventSystem != events)
-        {
-            ReleaseOwnership();
-            eventSystem = events;
-        }
-        if (!suppressed && input != null)
-        {
-            foreach (var action in new[] { input.UINavigate, input.UISubmit, input.UICancel, input.UIDelete, input.Pause })
-            {
-                if (action != null && action.enabled && !disabledActions.Any(item => item.Pointer == action.Pointer))
-                    disabledActions.Add(action);
-            }
-            suppressed = true;
-        }
-    }
-
-    public void EnsureSuppressed()
-    {
-        if (!OwnsMenuInput) { ReleaseOwnership(); return; }
-        if (!suppressed) return;
-        foreach (var action in disabledActions) if (action.enabled) action.Disable();
-    }
-
-    private bool OwnsMenuInput => current != null && current.isActiveAndEnabled && current.IsOpen
-        && navigationEnabled && current.IsSelectState
-        && Application.isFocused && !ExternalUi.IsOpen;
-
-    private static bool IsGalleryOpen()
-    {
-        var gallery = GameContext.Managers?.m_Gallery;
-        return gallery != null && (gallery.IsOpenedUI || gallery.GalleryUI?.IsOpen == true);
-    }
-
-    // Skip processing while we supply native menu events, without disabling the
-    // module or altering its pointer actions. UniverseLib shares their lifecycle.
-    internal bool SuppressModule(BaseInputModule module) => OwnsMenuInput && suppressed
-        && eventSystem != null && module.GetComponent<EventSystem>() == eventSystem;
-
-    private void ReleaseOwnership()
-    {
-        foreach (var action in disabledActions) action.Enable();
-        disabledActions.Clear();
-        suppressed = false;
-        eventSystem = null;
-    }
-
     public void Suspend()
     {
         SuspendCurrent();
@@ -525,32 +453,16 @@ internal sealed class MenuNavigation : IDisposable
 
     private void SuspendCurrent()
     {
-        galleryBindings?.ClearHover();
         current = null;
         logical = null;
         pointerArmed = false;
-        ReleaseOwnership();
+        inputs.Suspend();
         policy.Enter(idlePolicy.PointerActive);
-        ui.ClearPending();
     }
 
     public void Dispose()
     {
         Suspend();
-        galleryBindings?.Dispose();
-        ui.Dispose();
         menus.Clear();
     }
-
-    internal void WithNativeBindings(Action operation)
-    {
-        if (galleryBindings == null) operation();
-        else galleryBindings.WithNativeBindings(operation);
-    }
-
-    internal void RefreshGalleryButtonGuide(ButtonGuideUI guide)
-        => galleryBindings?.RefreshGuide(guide, true);
-
-    internal void RefreshGalleryButtonIcon(ButtonIcon icon)
-        => galleryBindings?.RefreshButtonIcon(icon);
 }

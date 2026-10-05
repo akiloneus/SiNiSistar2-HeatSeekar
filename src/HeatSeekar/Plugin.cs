@@ -34,20 +34,29 @@ public sealed class Plugin : BasePlugin
         }
         catch
         {
-            harmony.UnpatchSelf();
-            Runtime.Dispose();
-            Runtime = null;
+            Cleanup();
             throw;
         }
     }
 
     public override bool Unload()
     {
-        harmony?.UnpatchSelf();
-        Runtime?.Dispose();
-        Runtime = null;
-        if (host != null) UnityEngine.Object.Destroy(host);
+        Cleanup();
         return true;
+    }
+
+    private void Cleanup()
+    {
+        try { harmony?.UnpatchSelf(); }
+        catch (Exception error) { Log.LogError("Could not remove HeatSeekar patches: " + error); }
+        try { Runtime?.Dispose(); }
+        catch (Exception error) { Log.LogError("Could not dispose HeatSeekar runtime: " + error); }
+        finally
+        {
+            Runtime = null;
+            if (host != null) UnityEngine.Object.Destroy(host);
+            host = null;
+        }
     }
 }
 

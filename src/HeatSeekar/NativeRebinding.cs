@@ -114,8 +114,8 @@ internal sealed class NativeRebinding : IDisposable
         {
             savePending = false;
             if (owner != null) owner.UpdateInputAction();
+            Plugin.Runtime?.Inputs.RefreshBindings();
             SaveBindings();
-            Plugin.Runtime?.Menu.RefreshBindings();
         }
     }
 
@@ -160,8 +160,8 @@ internal sealed class NativeRebinding : IDisposable
         if (reset && inputObject != null) inputObject.InputManager.InGameInputDuplicateUpdate(action.bindings[index]);
         if (inputObject != null) inputObject.UpdateInputAction();
         slot.UpdateInput();
+        Plugin.Runtime?.Inputs.RefreshBindings();
         SaveBindings();
-        Plugin.Runtime?.Menu.RefreshBindings();
         log.LogInfo($"{(reset ? "Restored" : "Cleared")} native binding: {action.name}[{index}].");
         return true;
     }
@@ -189,7 +189,7 @@ internal sealed class NativeRebinding : IDisposable
     public void Dispose()
     {
         var current = operation;
-        if (current != null) current.Cancel();
-        operation = null;
+        try { if (current != null) current.Cancel(); }
+        finally { operation = null; blockedButtons = 0; }
     }
 }

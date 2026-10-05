@@ -38,6 +38,7 @@ internal sealed class NativeScrollList : IDisposable
     private readonly float restSpacing;
     private Vector2 startPosition;
     private bool wasOpen;
+    private bool layoutCaptured, fitterCaptured;
 
     internal NativeScrollList(ToggleListUI page, RectTransform list, IEnumerable<RectTransform?> chrome, float restSpacing)
     {
@@ -45,41 +46,47 @@ internal sealed class NativeScrollList : IDisposable
         this.restSpacing = restSpacing;
         viewport = list.parent.GetComponent<RectTransform>();
         viewState = RectState.Save(viewport); listState = RectState.Save(list);
-        foreach (var decoration in chrome.Where(item => item != null).Select(item => item!))
+        try
         {
-            decorations.Add(RectState.Save(decoration));
-            // These are direct children. World transforms can be collapsed by
-            // an inactive native parent animation during setup.
-            var position = decoration.localPosition - (Vector3)viewport.rect.center;
-            decoration.anchorMin = decoration.anchorMax = new Vector2(0.5f, 0.5f);
-            decoration.anchoredPosition = new Vector2(position.x, position.y);
-            // Headings and help share the native fade but sit outside the list.
-            foreach (var graphic in decoration.GetComponentsInChildren<MaskableGraphic>(true))
-            { masks[graphic] = graphic.maskable; graphic.maskable = false; }
+            foreach (var decoration in chrome.Where(item => item != null).Select(item => item!))
+            {
+                decorations.Add(RectState.Save(decoration));
+                // These are direct children. World transforms can be collapsed by
+                // an inactive native parent animation during setup.
+                var position = decoration.localPosition - (Vector3)viewport.rect.center;
+                decoration.anchorMin = decoration.anchorMax = new Vector2(0.5f, 0.5f);
+                decoration.anchoredPosition = new Vector2(position.x, position.y);
+                // Headings and help share the native fade but sit outside the list.
+                foreach (var graphic in decoration.GetComponentsInChildren<MaskableGraphic>(true))
+                { masks[graphic] = graphic.maskable; graphic.maskable = false; }
+            }
+            viewport.anchorMin = viewport.anchorMax = viewport.pivot = new Vector2(0.5f, 0.5f);
+            viewport.anchoredPosition = Vector2.zero;
+            viewport.sizeDelta = new Vector2(1000, 520);
+            // Preserve the native centered pivot and alignment. Changing these to
+            // a top pivot also changes the motion produced by the spacing curves.
+            layout = list.GetComponent<VerticalLayoutGroup>();
+            if (layout == null) { layout = list.gameObject.AddComponent<VerticalLayoutGroup>(); added.Add(layout); layout.spacing = 30; }
+            (layoutEnabled, controlWidth, controlHeight, expandWidth, expandHeight, alignment) =
+                (layout.enabled, layout.childControlWidth, layout.childControlHeight, layout.childForceExpandWidth, layout.childForceExpandHeight, layout.childAlignment);
+            layoutCaptured = true;
+            layout.enabled = true;
+            fitter = list.GetComponent<ContentSizeFitter>();
+            if (fitter == null) { fitter = list.gameObject.AddComponent<ContentSizeFitter>(); added.Add(fitter); }
+            (fitterEnabled, horizontalFit, verticalFit) = (fitter.enabled, fitter.horizontalFit, fitter.verticalFit);
+            fitterCaptured = true;
+            fitter.enabled = true; fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained; fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            added.Add(viewport.gameObject.AddComponent<RectMask2D>());
+            var surface = viewport.gameObject.AddComponent<Image>();
+            added.Add(surface); surface.color = Color.clear; surface.raycastTarget = true;
+            scroll = viewport.gameObject.AddComponent<ScrollRect>(); added.Add(scroll);
+            scroll.content = list; scroll.viewport = viewport;
+            scroll.horizontal = false; scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped; scroll.inertia = false; scroll.scrollSensitivity = 70;
+            // Keep scrolling and clipping without adding a visible scrollbar.
+            Reset();
         }
-        viewport.anchorMin = viewport.anchorMax = viewport.pivot = new Vector2(0.5f, 0.5f);
-        viewport.anchoredPosition = Vector2.zero;
-        viewport.sizeDelta = new Vector2(1000, 520);
-        // Preserve the native centered pivot and alignment. Changing these to
-        // a top pivot also changes the motion produced by the spacing curves.
-        layout = list.GetComponent<VerticalLayoutGroup>();
-        if (layout == null) { layout = list.gameObject.AddComponent<VerticalLayoutGroup>(); added.Add(layout); layout.spacing = 30; }
-        (layoutEnabled, controlWidth, controlHeight, expandWidth, expandHeight, alignment) =
-            (layout.enabled, layout.childControlWidth, layout.childControlHeight, layout.childForceExpandWidth, layout.childForceExpandHeight, layout.childAlignment);
-        layout.enabled = true;
-        fitter = list.GetComponent<ContentSizeFitter>();
-        if (fitter == null) { fitter = list.gameObject.AddComponent<ContentSizeFitter>(); added.Add(fitter); }
-        (fitterEnabled, horizontalFit, verticalFit) = (fitter.enabled, fitter.horizontalFit, fitter.verticalFit);
-        fitter.enabled = true; fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained; fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        added.Add(viewport.gameObject.AddComponent<RectMask2D>());
-        var surface = viewport.gameObject.AddComponent<Image>();
-        surface.color = Color.clear; surface.raycastTarget = true; added.Add(surface);
-        scroll = viewport.gameObject.AddComponent<ScrollRect>(); added.Add(scroll);
-        scroll.content = list; scroll.viewport = viewport;
-        scroll.horizontal = false; scroll.vertical = true;
-        scroll.movementType = ScrollRect.MovementType.Clamped; scroll.inertia = false; scroll.scrollSensitivity = 70;
-        // Keep scrolling and clipping without adding a visible scrollbar.
-        Reset();
+        catch { Dispose(); throw; }
     }
 
     internal bool Contains(Toggle toggle) => toggle != null && list != null && toggle.transform.parent == list;
@@ -144,12 +151,12 @@ internal sealed class NativeScrollList : IDisposable
     {
         foreach (var pair in masks) if (pair.Key != null) pair.Key.maskable = pair.Value;
         foreach (var state in decorations) state.Restore();
-        if (layout != null)
+        if (layout != null && layoutCaptured)
         {
             (layout.enabled, layout.childControlWidth, layout.childControlHeight, layout.childForceExpandWidth, layout.childForceExpandHeight, layout.childAlignment) =
                 (layoutEnabled, controlWidth, controlHeight, expandWidth, expandHeight, alignment);
         }
-        if (fitter != null) (fitter.enabled, fitter.horizontalFit, fitter.verticalFit) = (fitterEnabled, horizontalFit, verticalFit);
+        if (fitter != null && fitterCaptured) (fitter.enabled, fitter.horizontalFit, fitter.verticalFit) = (fitterEnabled, horizontalFit, verticalFit);
         foreach (var component in added.AsEnumerable().Reverse()) if (component != null) UnityEngine.Object.Destroy(component);
         viewState.Restore(); listState.Restore();
     }

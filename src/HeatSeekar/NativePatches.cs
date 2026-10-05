@@ -69,7 +69,7 @@ internal static class InputOwnershipPatch
     private static void Prefix()
     {
         Plugin.Runtime?.BeforeNativeInput();
-        Plugin.Runtime?.Menu.EnsureSuppressed();
+        Plugin.Runtime?.Inputs.EnsureSuppressed();
     }
     private static void Postfix(SiNiSistar2.InputManager __instance)
     {
@@ -82,13 +82,13 @@ internal static class InputOwnershipPatch
 internal static class MenuInputModulePatch
 {
     private static bool Prefix(UnityEngine.InputSystem.UI.InputSystemUIInputModule __instance)
-        => Plugin.Runtime?.Menu.SuppressModule(__instance) != true;
+        => Plugin.Runtime?.Inputs.SuppressModule(__instance) != true;
 }
 
 [HarmonyPatch(typeof(SiNiInputObject), nameof(SiNiInputObject.UpdateInputAction))]
 internal static class ReboundActionPatch
 {
-    private static void Postfix() => Plugin.Runtime?.Menu.EnsureSuppressed();
+    private static void Postfix() => Plugin.Runtime?.Inputs.EnsureSuppressed();
 }
 
 [HarmonyPatch(typeof(ToggleListUI), nameof(ToggleListUI.SubscriptToggles))]
@@ -143,7 +143,7 @@ internal static class GalleryButtonGuideSetupPatch
 {
     private static void Postfix(SiNiSistar2.UI.Gallery.ButtonGuideUI __instance)
     {
-        try { Plugin.Runtime?.Menu.RefreshGalleryButtonGuide(__instance); }
+        try { Plugin.Runtime?.Inputs.RefreshGalleryButtonGuide(__instance); }
         catch (Exception error) { Plugin.Runtime?.Warn("Gallery button guide", error); }
     }
 }
@@ -153,7 +153,7 @@ internal static class GalleryButtonIconDisplayPatch
 {
     private static void Postfix(ButtonIcon __instance)
     {
-        try { Plugin.Runtime?.Menu.RefreshGalleryButtonIcon(__instance); }
+        try { Plugin.Runtime?.Inputs.RefreshGalleryButtonIcon(__instance); }
         catch (Exception error) { Plugin.Runtime?.Warn("Gallery button icon", error); }
     }
 }

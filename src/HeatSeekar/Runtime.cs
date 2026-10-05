@@ -22,6 +22,7 @@ internal sealed class Runtime : IDisposable
     private bool savedVisibility;
     private CursorLockMode savedLock;
     private bool cursorFaulted;
+    private bool disposed;
     public NativeRebinding Rebinding { get; }
     public NativeConfiguration Configuration { get; }
     public MenuNavigation Menu { get; }
@@ -36,7 +37,7 @@ internal sealed class Runtime : IDisposable
     private readonly LogConsole console;
     private readonly AimVisuals aimVisuals = new();
     private readonly CombatInput combatInput = new();
-    public NativeUiBindings UiBindings { get; } = new();
+    public MenuInputLifecycle Inputs { get; }
 
     public Runtime(Settings settings, ManualLogSource log)
     {
@@ -53,13 +54,15 @@ internal sealed class Runtime : IDisposable
         Pages = new NativeSettingsPages(Options, Text, log);
         Entries = new NativeMenuEntries(log, Text);
         var ui = new UiInput();
+        Inputs = new MenuInputLifecycle(Rebinding, ui, Warn);
         MenuInteraction = new NativeMenuInteraction(Entries, Pages, ui.ConsumeLanguageDirection, Warn);
-        Menu = new MenuNavigation(Rebinding, log, ui, MenuInteraction);
-        Configuration.SetNativeBindingScope(Menu.WithNativeBindings);
+        Menu = new MenuNavigation(Inputs, log, MenuInteraction);
+        Configuration.SetNativeBindingScope(Inputs.WithNativeBindings);
     }
 
     public void Tick()
     {
+        if (disposed) return;
         try
         {
             Text.Tick();
@@ -74,9 +77,7 @@ internal sealed class Runtime : IDisposable
             transitionLayers.Tick();
             Entries.Tick();
             Pages.Tick();
-            Rebinding.Tick();
-            UiBindings.SetEnabled(settings.MenuNavigation.Value);
-            Menu.Tick(settings.MenuNavigation.Value || Pages.IsOpen);
+            Menu.Tick(settings.MenuNavigation.Value, Pages.IsOpen);
             var gameplay = GetGameplay();
             var menu = Menu.Active;
             var menuTransition = !menu && Menu.HasOpenPage;
@@ -113,16 +114,16 @@ internal sealed class Runtime : IDisposable
         catch (Exception error)
         {
             Warn("Runtime update", error);
-            Menu.Suspend();
-            cursor.Hide();
-            RestoreCursor();
+            Cleanup("Suspend menu after update failure", Menu.Suspend);
+            Cleanup("Hide cursor after update failure", cursor.Hide);
+            Cleanup("Restore cursor after update failure", RestoreCursor);
         }
     }
 
     internal void InputReady(SiNiSistar2.InputManager input)
     {
-        UiBindings.Attach(input, settings.MenuNavigation.Value);
-        Menu.SetInput(input);
+        if (disposed) return;
+        Inputs.Attach(input, settings.MenuNavigation.Value);
     }
 
     private bool GetGameplay()
@@ -196,23 +197,23 @@ internal sealed class Runtime : IDisposable
 
     internal void FocusChanged(bool focused)
     {
-        Interface.FocusChanged(focused);
+        Cleanup("Update focus options", () => Interface.FocusChanged(focused));
         if (focused) return;
-        Rebinding.Dispose();
-        combatInput.Restore();
-        Menu.Suspend();
-        cursor.Hide();
-        RestoreCursor();
+        Cleanup("Cancel rebinding", Rebinding.Dispose);
+        Cleanup("Restore combat input", combatInput.Restore);
+        Cleanup("Suspend menu", Menu.Suspend);
+        Cleanup("Hide cursor", cursor.Hide);
+        Cleanup("Restore cursor", RestoreCursor);
     }
 
     public void Suspend()
     {
-        combatInput.Restore();
-        Rebinding.Dispose();
-        Pages.Close();
-        Menu.Suspend();
-        cursor.Hide();
-        RestoreCursor();
+        Cleanup("Restore combat input", combatInput.Restore);
+        Cleanup("Cancel rebinding", Rebinding.Dispose);
+        Cleanup("Close settings page", Pages.Close);
+        Cleanup("Suspend menu", Menu.Suspend);
+        Cleanup("Hide cursor", cursor.Hide);
+        Cleanup("Restore cursor", RestoreCursor);
     }
 
     private void RestoreCursor()
@@ -228,5 +229,28 @@ internal sealed class Runtime : IDisposable
         if (warnings.Add(operation + ":" + error.GetType().Name + ":" + error.Message)) log.LogError($"{operation}: {error}");
     }
 
-    public void Dispose() { Suspend(); aimVisuals.Dispose(); Interface.Dispose(); console.Dispose(); Configuration.Dispose(); Pages.Dispose(); Entries.Dispose(); Menu.Dispose(); UiBindings.Dispose(); Display.Dispose(); Aspect.Dispose(); transitionLayers.Dispose(); cursor.Dispose(); }
+    private void Cleanup(string name, Action operation)
+    {
+        try { operation(); }
+        catch (Exception error) { Warn(name, error); }
+    }
+
+    public void Dispose()
+    {
+        if (disposed) return;
+        disposed = true;
+        Suspend();
+        Cleanup("Restore aim visuals", aimVisuals.Dispose);
+        Cleanup("Restore interface", Interface.Dispose);
+        Cleanup("Close console", console.Dispose);
+        Cleanup("Restore native configuration", Configuration.Dispose);
+        Cleanup("Restore settings pages", Pages.Dispose);
+        Cleanup("Restore menu entries", Entries.Dispose);
+        Cleanup("Release menu navigation", Menu.Dispose);
+        Cleanup("Restore input bindings", Inputs.Dispose);
+        Cleanup("Restore display", Display.Dispose);
+        Cleanup("Restore aspect ratio", Aspect.Dispose);
+        Cleanup("Restore transitions", transitionLayers.Dispose);
+        Cleanup("Release cursor", cursor.Dispose);
+    }
 }

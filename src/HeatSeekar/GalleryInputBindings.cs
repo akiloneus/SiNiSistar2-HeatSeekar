@@ -34,7 +34,7 @@ internal sealed class GalleryInputBindings : IDisposable
         public string Replacement = "";
     }
 
-    private readonly record struct GuideTarget(SiNiInputType Type, Transform Row);
+    private readonly record struct GuideTarget(SiNiInputType Type, Transform Row, Image? Keycap);
     private sealed class HintTint
     {
         public Image Image = null!;
@@ -62,6 +62,16 @@ internal sealed class GalleryInputBindings : IDisposable
     private readonly List<Replacement> replacements = new();
     private readonly List<GuideText> guideTexts = new();
     private readonly List<HintTint> hintTints = new();
+    private readonly List<ButtonIcon> indexedIcons = new();
+    private readonly List<GuideTarget> indexedTargets = new();
+    private readonly List<(Mapping Mapping, Text? Text)> indexedTexts = new();
+    private readonly HashSet<IntPtr> seenTexts = new();
+    private bool indexDirty = true;
+    private float nextIndexScan;
+    private int hitFrame = -1;
+    private Vector2 hitPosition;
+    private ToggleListUI? hitOwner;
+    private GuideTarget? cachedHit;
     private readonly Mapping[] mappings;
     private ButtonGuideUI? guide;
     private Transform? viewer;
@@ -98,7 +108,7 @@ internal sealed class GalleryInputBindings : IDisposable
             // Cancel in LateUpdate. That press must not also leave the page.
             if (wasHidden && !currentGuide.IsUIOff) revealedFrame = Time.frameCount;
             wasHidden = currentGuide.IsUIOff;
-            RefreshGuide(currentGuide, true);
+            RefreshGuide(currentGuide, CurrentAnimationViewer(), true, rebuild: false);
         }
     }
 
@@ -131,25 +141,20 @@ internal sealed class GalleryInputBindings : IDisposable
     public void RefreshGuide(ButtonGuideUI target, bool nativeSetup = false)
         => RefreshGuide(target, CurrentAnimationViewer(), nativeSetup);
 
-    internal void RefreshGuide(ButtonGuideUI target, Transform? animationViewer, bool nativeSetup)
+    internal void RefreshGuide(ButtonGuideUI target, Transform? animationViewer, bool nativeSetup, bool rebuild = true)
     {
         if (!active || target == null) return;
-        if (guide != null && guide.Pointer != target.Pointer) RestoreGuideText();
+        if (guide != target || viewer != animationViewer) RestoreGuideText();
         guide = target;
         viewer = animationViewer;
-        var seen = new HashSet<IntPtr>();
-        foreach (var icon in GuideIcons())
-            RefreshButtonIcon(icon, nativeSetup, seen);
-        foreach (var mapping in mappings.Where(item => item.ViewerGuide != null))
-        {
-            var text = FindGuideButtonText(animationViewer, mapping.ViewerGuide!)
-                ?? (mapping.Type == SiNiInputType.GallerySlow ? target.m_SlowModeText : target.m_PauseModeText);
-            RefreshGuideText(text, mapping, nativeSetup, seen);
-        }
+        EnsureGuideIndex(rebuild);
+        seenTexts.Clear();
+        foreach (var icon in indexedIcons) RefreshButtonIcon(icon, nativeSetup, seenTexts);
+        foreach (var entry in indexedTexts) RefreshGuideText(entry.Text, entry.Mapping, nativeSetup, seenTexts);
         for (var index = guideTexts.Count - 1; index >= 0; index--)
         {
             var state = guideTexts[index];
-            if (state.Component != null && seen.Contains(state.Component.Pointer)) continue;
+            if (state.Component != null && seenTexts.Contains(state.Component.Pointer)) continue;
             RestoreText(state);
             guideTexts.RemoveAt(index);
         }
@@ -158,6 +163,9 @@ internal sealed class GalleryInputBindings : IDisposable
     public void RefreshButtonIcon(ButtonIcon? icon)
     {
         if (!active || icon == null || !IsGalleryGuide(icon.transform)) return;
+        // Native setup normally invalidates the whole index. A newly created
+        // icon can also arrive through the native display callback on its own.
+        if (!indexedIcons.Any(item => item == icon)) indexDirty = true;
         RefreshButtonIcon(icon, false, null);
     }
 
@@ -193,6 +201,7 @@ internal sealed class GalleryInputBindings : IDisposable
         var hit = FindGuide(position, owner);
         if (hit == null) return false;
         ActivateGuide(guide!, hit.Value.Type);
+        hitFrame = -1;
         if (guide!.IsUIOff) ClearHover();
         // A disabled native action still consumes a click on its visible hint;
         // it must never confirm the unrelated focused menu row.
@@ -212,8 +221,7 @@ internal sealed class GalleryInputBindings : IDisposable
         if (hit != null)
         {
             var row = hit.Value.Row;
-            var icon = row.GetComponent<ButtonIcon>();
-            keycap = icon != null ? icon.m_ButtonTextImage : FindDescendant(row, "ButtonText")?.GetComponent<Image>();
+            keycap = hit.Value.Keycap;
             if (keycap != null && keycap.isActiveAndEnabled && !hintTints.Any(item => item.Image == keycap))
                 hintTints.Add(new HintTint { Image = keycap, Row = row, Native = keycap.color, Applied = keycap.color });
         }
@@ -242,21 +250,45 @@ internal sealed class GalleryInputBindings : IDisposable
         var target = CurrentGuide();
         if (!active || target == null || target != guide || !target.isActiveAndEnabled || !target.IsSelectState
             || target.IsRequestNavigation || (owner != null && owner != target)) return null;
+        EnsureGuideIndex(false);
+        if (hitFrame == Time.frameCount && hitPosition == position && hitOwner == owner) return cachedHit;
+        hitFrame = Time.frameCount; hitPosition = position; hitOwner = owner;
+        cachedHit = null;
+        foreach (var candidate in indexedTargets)
+            if (HitGuide(candidate.Row, position)) { cachedHit = candidate; break; }
+        return cachedHit;
+    }
 
-        // The viewer has plain text guides as well as ButtonIcons. Resolve both
-        // to the same native control, without adding UI event subscriptions.
+    private void EnsureGuideIndex(bool force)
+    {
+        // Visibility and colors remain live; only object discovery is cached.
+        // The periodic fallback covers unhooked native / other-plugin changes.
+        if (!force && !indexDirty && Time.unscaledTime < nextIndexScan
+            && !indexedIcons.Any(icon => icon == null) && !indexedTargets.Any(item => item.Row == null)) return;
+        indexDirty = false;
+        nextIndexScan = Time.unscaledTime + 0.5f;
+        hitFrame = -1;
+        indexedIcons.Clear(); indexedTargets.Clear(); indexedTexts.Clear();
+        indexedIcons.AddRange(GuideIcons());
+        var rows = new HashSet<IntPtr>();
+        void Add(SiNiInputType type, Transform? row)
+        {
+            if (row == null || !rows.Add(row.Pointer)) return;
+            var icon = row.GetComponent<ButtonIcon>();
+            var keycap = icon != null ? icon.m_ButtonTextImage : FindDescendant(row, "ButtonText")?.GetComponent<Image>();
+            indexedTargets.Add(new GuideTarget(type, row, keycap));
+        }
         foreach (var mapping in mappings.Where(item => item.ViewerGuide != null))
         {
-            var row = FindDescendant(viewer, mapping.ViewerGuide!);
-            if (HitGuide(row, position)) return new GuideTarget(mapping.Type, row!);
+            Add(mapping.Type, FindDescendant(viewer, mapping.ViewerGuide!));
+            indexedTexts.Add((mapping, FindGuideButtonText(viewer, mapping.ViewerGuide!)
+                ?? (mapping.Type == SiNiInputType.GallerySlow ? guide?.m_SlowModeText : guide?.m_PauseModeText)));
         }
-        foreach (var icon in GuideIcons())
+        foreach (var icon in indexedIcons)
         {
             var type = FindMapping(icon)?.Type ?? icon.m_SiNiInputType;
-            if (!IsGalleryControl(type) || !HitGuide(icon.transform, position)) continue;
-            return new GuideTarget(type, icon.transform);
+            if (IsGalleryControl(type)) Add(type, icon.transform);
         }
-        return null;
     }
 
     private IEnumerable<ButtonIcon> GuideIcons()
@@ -414,6 +446,8 @@ internal sealed class GalleryInputBindings : IDisposable
         ClearHover();
         foreach (var state in guideTexts) RestoreText(state);
         guideTexts.Clear();
+        indexedIcons.Clear(); indexedTargets.Clear(); indexedTexts.Clear();
+        indexDirty = true; hitFrame = -1; hitOwner = null; cachedHit = null;
         guide = null;
         viewer = null;
     }

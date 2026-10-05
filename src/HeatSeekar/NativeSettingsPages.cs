@@ -10,13 +10,21 @@ namespace HeatSeekar;
 
 internal sealed class NativeSettingsPages : IDisposable
 {
-    private sealed record Visual(ToggleListUI Page, Toggle Toggle, SettingsModel.Row Option, Text Label, Text? Value, GameObject? Check);
+    private sealed record Visual(ToggleListUI Page, Toggle Toggle, SettingsModel.Row Option, Text Label, Text? Value, GameObject? Check, bool Cloned)
+    {
+        internal readonly string LabelText = Label.text;
+        internal readonly Font LabelFont = Label.font;
+        internal readonly string? ValueText = Value?.text;
+        internal readonly Font? ValueFont = Value?.font;
+        internal readonly bool CheckActive = Check != null && Check.activeSelf;
+    }
     private sealed class GraphicsPage
     {
         public VideoUI Page = null!;
         public Toggle[] Originals = Array.Empty<Toggle>();
         public List<Toggle> Added = new();
         public GameObject Template = null!;
+        public GameObject? Storage;
         public float RestSpacing;
         public Dictionary<Toggle, Navigation> Navigation = new();
         public Dictionary<Transform, int> Siblings = new();
@@ -24,8 +32,10 @@ internal sealed class NativeSettingsPages : IDisposable
         public Text? Help;
         public NativeScrollList? Scroll;
     }
-    private sealed record AuxiliaryPage(ToggleListUI Page, Toggle[] Originals, Toggle? Added, Text Help, string FixedHelp)
+    private sealed record AuxiliaryPage(ToggleListUI Page, Toggle[] Originals, string FixedHelp)
     {
+        public Toggle? Added;
+        public Text? Help;
         public Dictionary<Toggle, Navigation> Navigation { get; } = Originals.ToDictionary(toggle => toggle, toggle => toggle.navigation);
     }
 
@@ -38,6 +48,7 @@ internal sealed class NativeSettingsPages : IDisposable
     private readonly Dictionary<Text, VerticalWrapMode> valueOverflow = new();
     private readonly Dictionary<IntPtr, AuxiliaryPage> auxiliary = new();
     private VideoUI? page;
+    private GameObject? pageRoot;
     private SettingUI? parent;
     private Toggle? nativeVideoEntry;
     private VideoUI? nativeVideoPage;
@@ -70,12 +81,19 @@ internal sealed class NativeSettingsPages : IDisposable
         {
             var original = video.UsingToggles.Where(toggle => toggle != null).ToArray();
             if (original.Length == 0 || video.m_Resolution == null || video.m_FullScreen == null) return;
-            var state = new GraphicsPage { Page = video, Originals = original };
+            var state = new GraphicsPage
+            {
+                Page = video,
+                Originals = original,
+                Navigation = original.ToDictionary(toggle => toggle, toggle => toggle.navigation),
+                Siblings = original.ToDictionary(toggle => toggle.transform, toggle => toggle.transform.GetSiblingIndex())
+            };
             graphics.Add(video.Pointer, state);
             // Capture the complete native prefab before adding plugin rows or
             // replacing Video's value listeners. Its inactive parent prevents
             // Awake from running on this template or subscribing a second time.
             var storage = new GameObject("HeatSeekar.NativeTemplates");
+            state.Storage = storage;
             storage.SetActive(false);
             storage.transform.SetParent(video.transform.parent, false);
             state.Template = UnityEngine.Object.Instantiate(video.gameObject, storage.transform, false);
@@ -104,6 +122,11 @@ internal sealed class NativeSettingsPages : IDisposable
             LayoutGraphics(state);
             log.LogInfo("HeatSeekar video options added to the native Graphics page.");
         }
+        catch
+        {
+            if (graphics.Remove(video.Pointer, out var state)) RestoreGraphics(state);
+            throw;
+        }
         finally { installing.Remove(candidate.Pointer); }
     }
 
@@ -115,31 +138,43 @@ internal sealed class NativeSettingsPages : IDisposable
         var video = audio.GetComponentInParent<SettingUI>(true)?.m_VideoUI;
         var original = audio.UsingToggles?.Where(toggle => toggle != null).ToArray();
         if (video == null || original == null || original.Length == 0) return;
-        var last = original[^1];
-        var row = CloneToggle(video.m_FullScreen, last.transform.parent, audio.m_ToggleGroup, "HeatSeekar.Mute in background");
-        var rect = row.GetComponent<RectTransform>();
-        var lastRect = last.GetComponent<RectTransform>();
-        rect.sizeDelta = lastRect.sizeDelta;
-        var rowLabel = row.transform.Find("TextBase/Text")?.GetComponent<Text>();
-        var lastLabel = last.transform.Find("TextBase/Text")?.GetComponent<Text>();
-        if (rowLabel != null && lastLabel != null) rowLabel.fontSize = lastLabel.fontSize;
-        if (last.transform.parent.GetComponent<LayoutGroup>() == null)
+        var state = new AuxiliaryPage(audio, original, "");
+        auxiliary.Add(audio.Pointer, state);
+        try
         {
-            rect.anchorMin = lastRect.anchorMin; rect.anchorMax = lastRect.anchorMax; rect.pivot = lastRect.pivot;
-            rect.localScale = lastRect.localScale;
-            var step = original.Length > 1 ? lastRect.anchoredPosition - original[^2].GetComponent<RectTransform>().anchoredPosition : Vector2.down * 72;
-            if (step.y >= -1) step = Vector2.down * 72;
-            rect.anchoredPosition = lastRect.anchoredPosition + step;
+            var last = original[^1];
+            var row = CloneToggle(video.m_FullScreen, last.transform.parent, audio.m_ToggleGroup, "HeatSeekar.Mute in background");
+            state.Added = row;
+            var rect = row.GetComponent<RectTransform>();
+            var lastRect = last.GetComponent<RectTransform>();
+            rect.sizeDelta = lastRect.sizeDelta;
+            var rowLabel = row.transform.Find("TextBase/Text")?.GetComponent<Text>();
+            var lastLabel = last.transform.Find("TextBase/Text")?.GetComponent<Text>();
+            if (rowLabel != null && lastLabel != null) rowLabel.fontSize = lastLabel.fontSize;
+            if (last.transform.parent.GetComponent<LayoutGroup>() == null)
+            {
+                rect.anchorMin = lastRect.anchorMin; rect.anchorMax = lastRect.anchorMax; rect.pivot = lastRect.pivot;
+                rect.localScale = lastRect.localScale;
+                var step = original.Length > 1 ? lastRect.anchoredPosition - original[^2].GetComponent<RectTransform>().anchoredPosition : Vector2.down * 72;
+                if (step.y >= -1) step = Vector2.down * 72;
+                rect.anchoredPosition = lastRect.anchoredPosition + step;
+            }
+            var allRows = original.Append(row).ToArray();
+            var template = video.m_FullScreen.GetComponentsInChildren<Text>(true).First();
+            var footer = NewText("HeatSeekar.AudioHelp", audio.transform.Find("Content") ?? audio.transform, template, 17, new Vector2(0, -316), new Vector2(1200, 48));
+            state.Help = footer;
+            BindVisual(audio, row, options.Options.Single(option => option.Audio), true);
+            audio.m_Toggles = new[] { row };
+            try { audio.SubscriptToggles(); }
+            finally { audio.m_Toggles = allRows; }
+            LinkRows(allRows);
         }
-        var allRows = original.Append(row).ToArray();
-        var template = video.m_FullScreen.GetComponentsInChildren<Text>(true).First();
-        var footer = NewText("HeatSeekar.AudioHelp", audio.transform.Find("Content") ?? audio.transform, template, 17, new Vector2(0, -316), new Vector2(1200, 48));
-        auxiliary[audio.Pointer] = new(audio, original, row, footer, "");
-        BindVisual(audio, row, options.Options.Single(option => option.Audio), true);
-        audio.m_Toggles = new[] { row };
-        try { audio.SubscriptToggles(); }
-        finally { audio.m_Toggles = allRows; }
-        LinkRows(allRows);
+        catch
+        {
+            auxiliary.Remove(audio.Pointer);
+            RestoreAuxiliary(state);
+            throw;
+        }
     }
 
     private void RegisterBindingHelp(ToggleListUI owner)
@@ -148,8 +183,7 @@ internal sealed class NativeSettingsPages : IDisposable
         var template = owner.GetComponentsInChildren<Text>(true).FirstOrDefault();
         if (template == null) return;
         var footer = NewText("HeatSeekar.BindingHelp", owner.transform.Find("Content") ?? owner.transform, template, 17, new Vector2(0, -316), new Vector2(1200, 48));
-        auxiliary[owner.Pointer] = new(owner, Array.Empty<Toggle>(), null, footer,
-            "ui_help_bindings");
+        auxiliary[owner.Pointer] = new(owner, Array.Empty<Toggle>(), "ui_help_bindings") { Help = footer };
     }
 
     public void Ready(VideoUI video)
@@ -171,10 +205,9 @@ internal sealed class NativeSettingsPages : IDisposable
         Canvas.ForceUpdateCanvases();
         var container = state.Page.m_Resolution.transform.parent;
         var rows = state.Page.UsingToggles.Where(toggle => toggle != null && toggle.gameObject.activeSelf).ToArray();
-        state.Siblings = state.Originals.ToDictionary(toggle => toggle.transform, toggle => toggle.transform.GetSiblingIndex());
         for (var index = 0; index < rows.Length; index++)
         {
-            state.Navigation[rows[index]] = rows[index].navigation;
+            state.Navigation.TryAdd(rows[index], rows[index].navigation);
             rows[index].transform.SetSiblingIndex(index);
         }
         LinkRows(rows);
@@ -210,11 +243,20 @@ internal sealed class NativeSettingsPages : IDisposable
         // child page, and reopen itself. Restore this slot after that round trip.
         parent.m_Video = entry;
         parent.m_VideoUI = page;
-        childEntered = false;
-        ownScroll?.Reset();
-        Plugin.Runtime!.Menu.Register(page);
-        Refresh();
-        return true;
+        try
+        {
+            childEntered = false;
+            ownScroll?.Reset();
+            Plugin.Runtime!.Menu.Register(page);
+            Refresh();
+            return true;
+        }
+        catch
+        {
+            RestoreRoute();
+            ReleasePage();
+            throw;
+        }
     }
 
     private void CreatePage(ToggleListUI source)
@@ -222,53 +264,66 @@ internal sealed class NativeSettingsPages : IDisposable
         var video = source.Cast<SettingUI>().m_VideoUI;
         if (video == null || !graphics.TryGetValue(video.Pointer, out var state)) return;
         var root = UnityEngine.Object.Instantiate(state.Template, video.transform.parent, false);
-        root.name = "HeatSeekar.NativePage";
-        root.SetActive(false);
-        pageSource = source;
-        page = root.GetComponent<VideoUI>();
-        RemoveLocalization(root);
-        var originals = page.GetComponentsInChildren<Toggle>(true).ToArray();
-        var content = root.transform.Find("Content");
-        var list = content.Find("List").GetComponent<RectTransform>();
-        var fontTemplate = page.m_FullScreen.GetComponentsInChildren<Text>(true).First();
-        title = content.Find("Title").GetComponentsInChildren<Text>(true).First();
-        help = NewText("Help", content, fontTemplate, 17, new Vector2(0, -316), new Vector2(1150, 48));
-        var definitions = options.Options.Where(option => !option.Video && !option.Audio).ToArray();
-        var toggles = new List<Toggle>();
-        foreach (var option in definitions)
+        pageRoot = root;
+        try
         {
-            var template = option.IsOn != null ? page.m_FullScreen : option.Change != null ? page.m_Resolution : page.m_SetDefault;
-            var toggle = CloneToggle(template, list, page.m_ToggleGroup, "HeatSeekar." + option.Name);
-            toggles.Add(toggle);
-            BindVisual(page, toggle, option, true);
+            root.name = "HeatSeekar.NativePage";
+            root.SetActive(false);
+            pageSource = source;
+            page = root.GetComponent<VideoUI>();
+            RemoveLocalization(root);
+            var originals = page.GetComponentsInChildren<Toggle>(true).ToArray();
+            var content = root.transform.Find("Content");
+            var list = content.Find("List").GetComponent<RectTransform>();
+            var fontTemplate = page.m_FullScreen.GetComponentsInChildren<Text>(true).First();
+            title = content.Find("Title").GetComponentsInChildren<Text>(true).First();
+            help = NewText("Help", content, fontTemplate, 17, new Vector2(0, -316), new Vector2(1150, 48));
+            var definitions = options.Options.Where(option => !option.Video && !option.Audio).ToArray();
+            var toggles = new List<Toggle>();
+            foreach (var option in definitions)
+            {
+                var template = option.IsOn != null ? page.m_FullScreen : option.Change != null ? page.m_Resolution : page.m_SetDefault;
+                var toggle = CloneToggle(template, list, page.m_ToggleGroup, "HeatSeekar." + option.Name);
+                toggles.Add(toggle);
+                BindVisual(page, toggle, option, true);
+            }
+            // Keep Video's serialized references valid for its native Setup, but
+            // only the replacement rows participate in layout or navigation.
+            foreach (var original in originals) original.gameObject.SetActive(false);
+            page.m_Toggles = toggles.ToArray();
+            page.m_FirstToggle = toggles[0];
+            page.m_CancelToggles = Array.Empty<Toggle>();
+            page.Setup();
+            foreach (var hidden in new[] { page.m_FullScreen, page.m_VSync, page.m_DisplayTextLog })
+                if (hidden != null) hidden.onValueChanged = new Toggle.ToggleEvent();
+            ownScroll = new NativeScrollList(page, list, new[] { content.Find("Title").GetComponent<RectTransform>(), help.rectTransform }, state.RestSpacing);
+            LinkRows(toggles.ToArray());
+            pageClosedSubscription = UniRx.ObservableExtensions.Subscribe(page.OnAfterCloseSubject.Cast<Il2CppSystem.IObservable<ToggleListUI>>(),
+                (Il2CppSystem.Action<ToggleListUI>)(Action<ToggleListUI>)(_ => { if (disposed) ReleasePage(); }));
         }
-        // Keep Video's serialized references valid for its native Setup, but
-        // only the replacement rows participate in layout or navigation.
-        foreach (var original in originals) original.gameObject.SetActive(false);
-        page.m_Toggles = toggles.ToArray();
-        page.m_FirstToggle = toggles[0];
-        page.m_CancelToggles = Array.Empty<Toggle>();
-        page.Setup();
-        foreach (var hidden in new[] { page.m_FullScreen, page.m_VSync, page.m_DisplayTextLog })
-            if (hidden != null) hidden.onValueChanged = new Toggle.ToggleEvent();
-        ownScroll = new NativeScrollList(page, list, new[] { content.Find("Title").GetComponent<RectTransform>(), help.rectTransform }, state.RestSpacing);
-        LinkRows(toggles.ToArray());
-        pageClosedSubscription = UniRx.ObservableExtensions.Subscribe(page.OnAfterCloseSubject.Cast<Il2CppSystem.IObservable<ToggleListUI>>(),
-            (Il2CppSystem.Action<ToggleListUI>)(Action<ToggleListUI>)(_ => { if (disposed) ReleasePage(); }));
+        catch
+        {
+            ReleasePage();
+            throw;
+        }
     }
 
     private static Toggle CloneToggle(Toggle source, Transform container, ToggleGroup group, string name)
     {
         var clone = UnityEngine.Object.Instantiate(source.gameObject, container, false);
-        clone.name = name;
-        RemoveLocalization(clone);
-        var toggle = clone.GetComponent<Toggle>();
-        toggle.group = group;
-        toggle.onValueChanged = new Toggle.ToggleEvent();
-        toggle.interactable = true;
-        toggle.graphic = null;
-        clone.SetActive(true);
-        return toggle;
+        try
+        {
+            clone.name = name;
+            RemoveLocalization(clone);
+            var toggle = clone.GetComponent<Toggle>();
+            toggle.group = group;
+            toggle.onValueChanged = new Toggle.ToggleEvent();
+            toggle.interactable = true;
+            toggle.graphic = null;
+            clone.SetActive(true);
+            return toggle;
+        }
+        catch { UnityEngine.Object.Destroy(clone); throw; }
     }
 
     private static void RemoveLocalization(GameObject owner)
@@ -294,7 +349,7 @@ internal sealed class NativeSettingsPages : IDisposable
             var square = toggle.transform.Find("Square");
             if (square != null) square.gameObject.SetActive(false);
         }
-        visuals[toggle.Pointer] = new(owner, toggle, option, label, value, check);
+        visuals[toggle.Pointer] = new(owner, toggle, option, label, value, check, cloned);
     }
 
     private void AllowValueOverflow(Text? label, bool restore)
@@ -430,13 +485,15 @@ internal sealed class NativeSettingsPages : IDisposable
 
     private void ReleasePage()
     {
-        pageClosedSubscription?.Dispose(); pageClosedSubscription = null;
-        ownScroll?.Dispose(); ownScroll = null;
+        Restore("Release page subscription", () => pageClosedSubscription?.Dispose()); pageClosedSubscription = null;
+        Restore("Restore page scrolling", () => ownScroll?.Dispose()); ownScroll = null;
         if (page != null)
         {
-            Plugin.Runtime?.Menu.Unregister(page);
-            UnityEngine.Object.Destroy(page.gameObject);
+            RestoreVisuals(page);
+            Restore("Unregister settings page", () => Plugin.Runtime?.Menu.Unregister(page));
         }
+        if (pageRoot != null) UnityEngine.Object.Destroy(pageRoot);
+        pageRoot = null;
         page = null; pageSource = null; pageWasOpen = false;
     }
 
@@ -449,60 +506,123 @@ internal sealed class NativeSettingsPages : IDisposable
     private static void LinkRows(Toggle[] rows)
     {
         for (var index = 0; index < rows.Length; index++)
-            rows[index].navigation = new Navigation { mode = Navigation.Mode.Explicit,
-                selectOnUp = rows[(index + rows.Length - 1) % rows.Length], selectOnDown = rows[(index + 1) % rows.Length] };
+            rows[index].navigation = new Navigation
+            {
+                mode = Navigation.Mode.Explicit,
+                selectOnUp = rows[(index + rows.Length - 1) % rows.Length],
+                selectOnDown = rows[(index + 1) % rows.Length]
+            };
     }
 
     private static RectTransform NewRect(string name, Transform parent)
     {
         var rect = new GameObject(name, new[] { Il2CppType.Of<RectTransform>() }).GetComponent<RectTransform>();
-        rect.SetParent(parent, false);
+        try { rect.SetParent(parent, false); }
+        catch { UnityEngine.Object.Destroy(rect.gameObject); throw; }
         return rect;
     }
 
     private static Text NewText(string name, Transform parent, Text template, int size, Vector2 position, Vector2 dimensions)
     {
         var rect = NewRect(name, parent);
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = position; rect.sizeDelta = dimensions;
-        var label = rect.gameObject.AddComponent<Text>();
-        label.font = template.font; label.fontSize = size; label.color = template.color;
-        label.alignment = TextAnchor.MiddleCenter; label.raycastTarget = false; label.supportRichText = false;
-        return label;
+        try
+        {
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position; rect.sizeDelta = dimensions;
+            var label = rect.gameObject.AddComponent<Text>();
+            label.font = template.font; label.fontSize = size; label.color = template.color;
+            label.alignment = TextAnchor.MiddleCenter; label.raycastTarget = false; label.supportRichText = false;
+            return label;
+        }
+        catch { UnityEngine.Object.Destroy(rect.gameObject); throw; }
+    }
+
+    private void Restore(string operation, Action action)
+    {
+        try { action(); }
+        catch (Exception error) { log.LogError(operation + ": " + error); }
+    }
+
+    private void RestoreVisuals(ToggleListUI owner)
+    {
+        foreach (var pair in visuals.Where(pair => pair.Value.Page == owner).ToArray())
+        {
+            var visual = pair.Value;
+            visuals.Remove(pair.Key);
+            if (visual.Cloned) continue;
+            Restore("Restore native option label", () =>
+            {
+                if (visual.Label != null) { visual.Label.text = visual.LabelText; visual.Label.font = visual.LabelFont; }
+                if (visual.Value != null) { visual.Value.text = visual.ValueText; visual.Value.font = visual.ValueFont; }
+                if (visual.Check != null) visual.Check.SetActive(visual.CheckActive);
+            });
+        }
+        foreach (var pair in valueOverflow.Where(pair => pair.Key == null || pair.Key.transform.IsChildOf(owner.transform)).ToArray())
+        {
+            valueOverflow.Remove(pair.Key);
+            Restore("Restore value overflow", () => { if (pair.Key != null) pair.Key.verticalOverflow = pair.Value; });
+        }
+    }
+
+    private void RestoreAuxiliary(AuxiliaryPage state)
+    {
+        if (state.Page != null)
+        {
+            RestoreVisuals(state.Page);
+            if (state.Originals.Length > 0) Restore("Restore auxiliary rows", () => RestoreRows(state.Page, state.Originals,
+                state.Added != null ? new[] { state.Added } : Array.Empty<Toggle>()));
+        }
+        foreach (var entry in state.Navigation)
+            Restore("Restore auxiliary navigation", () => { if (entry.Key != null) entry.Key.navigation = entry.Value; });
+        if (state.Added != null) UnityEngine.Object.Destroy(state.Added.gameObject);
+        if (state.Help != null) UnityEngine.Object.Destroy(state.Help.gameObject);
+    }
+
+    private void RestoreGraphics(GraphicsPage state)
+    {
+        Restore("Restore graphics scrolling", () => state.Scroll?.Dispose());
+        if (state.Page != null)
+        {
+            RestoreVisuals(state.Page);
+            Restore("Restore graphics rows", () => RestoreRows(state.Page, state.Originals, state.Added));
+        }
+        foreach (var entry in state.Values)
+            Restore("Restore native toggle event", () => { if (entry.Key != null) { entry.Key.onValueChanged = entry.Value.Event; entry.Key.graphic = entry.Value.Graphic; } });
+        foreach (var entry in state.Navigation)
+            Restore("Restore graphics navigation", () => { if (entry.Key != null) entry.Key.navigation = entry.Value; });
+        foreach (var entry in state.Siblings.OrderBy(entry => entry.Value))
+            Restore("Restore graphics row order", () => { if (entry.Key != null) entry.Key.SetSiblingIndex(entry.Value); });
+        foreach (var toggle in state.Added) if (toggle != null) UnityEngine.Object.Destroy(toggle.gameObject);
+        if (state.Help != null) UnityEngine.Object.Destroy(state.Help.gameObject);
+        if (state.Storage != null) UnityEngine.Object.Destroy(state.Storage);
+        if (state.Page != null) Restore("Refresh native video settings", state.Page.UpdateVideoParameter);
+    }
+
+    private static void RestoreRows(ToggleListUI owner, Toggle[] original, IEnumerable<Toggle> added)
+    {
+        owner.m_Toggles = original;
+        var removed = added.Where(toggle => toggle != null).ToArray();
+        var replacement = original.FirstOrDefault(toggle => toggle != null && toggle.interactable && toggle.gameObject.activeSelf)
+            ?? original.FirstOrDefault(toggle => toggle != null);
+        if (removed.Any(toggle => toggle == owner.OnCursorToggle))
+            owner.m_OnCursorToggleProp.Value = replacement!;
+        if (removed.Any(toggle => toggle == owner.SelectedToggle)) owner._SelectedToggle_k__BackingField = null!;
+        var events = EventSystem.current;
+        var selected = events?.currentSelectedGameObject;
+        if (selected != null && removed.Any(toggle => selected.transform.IsChildOf(toggle.transform)))
+            events!.SetSelectedGameObject(replacement != null ? replacement.gameObject : null);
     }
 
     public void Dispose()
     {
         disposed = true;
-        foreach (var entry in valueOverflow) if (entry.Key != null) entry.Key.verticalOverflow = entry.Value;
-        valueOverflow.Clear();
-        Close();
-        foreach (var state in auxiliary.Values)
-        {
-            if (state.Page == null) continue;
-            if (state.Added != null)
-            {
-                state.Page.m_Toggles = state.Originals;
-                foreach (var entry in state.Navigation) if (entry.Key != null) entry.Key.navigation = entry.Value;
-                UnityEngine.Object.Destroy(state.Added.gameObject);
-            }
-            if (state.Help != null) UnityEngine.Object.Destroy(state.Help.gameObject);
-        }
+        Restore("Close native settings page", Close);
+        foreach (var state in auxiliary.Values) RestoreAuxiliary(state);
         auxiliary.Clear();
-        foreach (var state in graphics.Values)
-        {
-            if (state.Page == null) continue;
-            state.Scroll?.Dispose();
-            state.Page.m_Toggles = state.Originals;
-            foreach (var entry in state.Values)
-                if (entry.Key != null) { entry.Key.onValueChanged = entry.Value.Event; entry.Key.graphic = entry.Value.Graphic; }
-            foreach (var entry in state.Navigation) if (entry.Key != null) entry.Key.navigation = entry.Value;
-            foreach (var entry in state.Siblings.OrderBy(entry => entry.Value)) if (entry.Key != null) entry.Key.SetSiblingIndex(entry.Value);
-            foreach (var toggle in state.Added) if (toggle != null) UnityEngine.Object.Destroy(toggle.gameObject);
-            if (state.Help != null) UnityEngine.Object.Destroy(state.Help.gameObject);
-            if (state.Template != null) UnityEngine.Object.Destroy(state.Template.transform.parent.gameObject);
-            state.Page.UpdateVideoParameter();
-        }
+        foreach (var state in graphics.Values) RestoreGraphics(state);
+        foreach (var entry in valueOverflow)
+            Restore("Restore value overflow", () => { if (entry.Key != null) entry.Key.verticalOverflow = entry.Value; });
+        valueOverflow.Clear();
         if (page != null && !page.IsOpen) ReleasePage();
         graphics.Clear(); visuals.Clear();
     }
