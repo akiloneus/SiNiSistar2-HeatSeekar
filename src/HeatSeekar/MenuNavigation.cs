@@ -153,7 +153,11 @@ internal sealed class MenuNavigation : IDisposable
         if (current == null) return;
         var moved = (position - lastPointer).sqrMagnitude > 0.25f;
         lastPointer = position;
-        if (Time.frameCount == enteredFrame || rebinding.ConsumesInput || !current.IsSelectState) return;
+        if (Time.frameCount == enteredFrame || rebinding.ConsumesInput || !current.IsSelectState)
+        {
+            galleryBindings?.ClearHover();
+            return;
+        }
         SyncLogical();
         // Q/R switch to focus mode, but their target is the slot that was under
         // the visible pointer before that switch, not the entire logical row.
@@ -162,8 +166,12 @@ internal sealed class MenuNavigation : IDisposable
         if (frame.NonPointerInput) pointerArmed = false;
         else if (moved) pointerArmed = true;
         if (policy.PointerActive) policy.LeaveSlots();
-        if (frame.Click && policy.PointerActive && galleryBindings?.Active == true
-            && !PointerBlocked(position, ValidToggles()) && galleryBindings.ClickGuide(position, current)) return;
+        if (galleryBindings?.Active == true)
+        {
+            var pointerAvailable = policy.PointerActive && !PointerBlocked(position, ValidToggles());
+            galleryBindings.HoverGuide(position, current, pointerAvailable);
+            if (frame.Click && pointerAvailable && galleryBindings.ClickGuide(position, current)) return;
+        }
         // An explicit new click may act at the pointer even before it moves;
         // the click that opened this page was already consumed during entry.
         var hovered = policy.PointerActive && (pointerArmed || frame.Click) ? HitTest(position) : null;
@@ -517,6 +525,7 @@ internal sealed class MenuNavigation : IDisposable
 
     private void SuspendCurrent()
     {
+        galleryBindings?.ClearHover();
         current = null;
         logical = null;
         pointerArmed = false;

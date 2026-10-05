@@ -34,8 +34,34 @@ internal sealed class GalleryInputBindings : IDisposable
         public string Replacement = "";
     }
 
+    private readonly record struct GuideTarget(SiNiInputType Type, Transform Row);
+    private sealed class HintTint
+    {
+        public Image Image = null!;
+        public Transform Row = null!;
+        public Color Native, Applied;
+        public float Amount;
+
+        public void Update(bool hovered)
+        {
+            // A native refresh may change the base color while hovered. Keep
+            // that new color, rather than baking our previous tint into it.
+            if (Image.color != Applied) Native = Image.color;
+            Amount = Mathf.MoveTowards(Amount, hovered ? 1 : 0, Time.unscaledDeltaTime / 0.08f);
+            var brightness = 1 - 0.12f * Amount;
+            Applied = new Color(Native.r * brightness, Native.g * brightness, Native.b * brightness, Native.a);
+            Image.color = Applied;
+        }
+
+        public void Restore()
+        {
+            if (Image != null && Image.color == Applied) Image.color = Native;
+        }
+    }
+
     private readonly List<Replacement> replacements = new();
     private readonly List<GuideText> guideTexts = new();
+    private readonly List<HintTint> hintTints = new();
     private readonly Mapping[] mappings;
     private ButtonGuideUI? guide;
     private Transform? viewer;
@@ -164,27 +190,73 @@ internal sealed class GalleryInputBindings : IDisposable
 
     internal bool ClickGuide(Vector2 position, ToggleListUI? owner)
     {
+        var hit = FindGuide(position, owner);
+        if (hit == null) return false;
+        ActivateGuide(guide!, hit.Value.Type);
+        if (guide!.IsUIOff) ClearHover();
+        // A disabled native action still consumes a click on its visible hint;
+        // it must never confirm the unrelated focused menu row.
+        return true;
+    }
+
+    internal void HoverGuide(Vector2 position, ToggleListUI owner, bool pointerAvailable)
+    {
+        if (!pointerAvailable || !active || guide == null || owner != guide || !guide.IsSelectState
+            || guide.IsRequestNavigation || guide.IsUIOff)
+        {
+            ClearHover();
+            return;
+        }
+        var hit = FindGuide(position, owner);
+        Image? keycap = null;
+        if (hit != null)
+        {
+            var row = hit.Value.Row;
+            var icon = row.GetComponent<ButtonIcon>();
+            keycap = icon != null ? icon.m_ButtonTextImage : FindDescendant(row, "ButtonText")?.GetComponent<Image>();
+            if (keycap != null && keycap.isActiveAndEnabled && !hintTints.Any(item => item.Image == keycap))
+                hintTints.Add(new HintTint { Image = keycap, Row = row, Native = keycap.color, Applied = keycap.color });
+        }
+        for (var index = hintTints.Count - 1; index >= 0; index--)
+        {
+            var tint = hintTints[index];
+            if (tint.Image == null || !tint.Image.isActiveAndEnabled || !GuideVisible(tint.Row))
+            {
+                tint.Restore();
+                hintTints.RemoveAt(index);
+                continue;
+            }
+            tint.Update(tint.Image == keycap);
+            if (tint.Amount == 0) hintTints.RemoveAt(index);
+        }
+    }
+
+    internal void ClearHover()
+    {
+        foreach (var tint in hintTints) tint.Restore();
+        hintTints.Clear();
+    }
+
+    private GuideTarget? FindGuide(Vector2 position, ToggleListUI? owner)
+    {
         var target = CurrentGuide();
         if (!active || target == null || target != guide || !target.isActiveAndEnabled || !target.IsSelectState
-            || target.IsRequestNavigation || (owner != null && owner != target)) return false;
+            || target.IsRequestNavigation || (owner != null && owner != target)) return null;
 
         // The viewer has plain text guides as well as ButtonIcons. Resolve both
         // to the same native control, without adding UI event subscriptions.
         foreach (var mapping in mappings.Where(item => item.ViewerGuide != null))
         {
             var row = FindDescendant(viewer, mapping.ViewerGuide!);
-            if (HitGuide(row, position)) { ActivateGuide(target, mapping.Type); return true; }
+            if (HitGuide(row, position)) return new GuideTarget(mapping.Type, row!);
         }
         foreach (var icon in GuideIcons())
         {
             var type = FindMapping(icon)?.Type ?? icon.m_SiNiInputType;
             if (!IsGalleryControl(type) || !HitGuide(icon.transform, position)) continue;
-            ActivateGuide(target, type);
-            // A disabled native action still consumes a click on its visible
-            // hint; it must never confirm the unrelated focused menu row.
-            return true;
+            return new GuideTarget(type, icon.transform);
         }
-        return false;
+        return null;
     }
 
     private IEnumerable<ButtonIcon> GuideIcons()
@@ -200,9 +272,14 @@ internal sealed class GalleryInputBindings : IDisposable
 
     private static bool HitGuide(Transform? target, Vector2 position)
     {
+        if (!GuideVisible(target)) return false;
+        var rect = target!.TryCast<RectTransform>();
+        return rect != null && UiGeometry.Contains(rect, position, 6);
+    }
+
+    private static bool GuideVisible(Transform? target)
+    {
         if (target == null || !target.gameObject.activeInHierarchy) return false;
-        var rect = target.TryCast<RectTransform>();
-        if (rect == null || !UiGeometry.Contains(rect, position, 6)) return false;
         // Native Gallery hides whole groups using alpha while leaving their
         // objects active. Invisible hints must not remain click targets.
         for (var node = target; node != null; node = node.parent)
@@ -334,6 +411,7 @@ internal sealed class GalleryInputBindings : IDisposable
 
     private void RestoreGuideText()
     {
+        ClearHover();
         foreach (var state in guideTexts) RestoreText(state);
         guideTexts.Clear();
         guide = null;
