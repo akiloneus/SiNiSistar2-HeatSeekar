@@ -23,7 +23,7 @@ Both packages include default translation JSON files and cursor/crosshair PNGs. 
 
 [All releases](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases) · [Source repository](https://github.com/akiloneus/SiNiSistar2-HeatSeekar)
 
-## How to install
+## Install
 
 1. Extract the ZIP selected above directly into the folder containing `SiNiSistar2.exe`. Merge folders and replace files when prompted. Do not put the extracted files inside an extra package-named folder.
 2. Start the game and configure HeatSeekar through the native Settings and Graphics pages. The first launch with BepInEx may take longer while it prepares its files.
@@ -43,7 +43,7 @@ Game folder/
 
 The Full package also installs the BepInEx runtime files in the game folder.
 
-## How to Update
+## Update
 
 1. Download **ModOnly** (`*-ModOnly.zip`) from the [latest release](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest). Check its release notes for any BepInEx requirement changes.
 2. Extract the ZIP into the same folder containing `SiNiSistar2.exe`, merging folders and replacing files when prompted.
