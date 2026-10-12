@@ -16,8 +16,8 @@ Open **Assets** on the release page. Choose a ZIP ending in `-Full.zip` or `-Mod
 
 | Package | When to use |
 | --- | --- |
-| **Full** — Mod + BepInEx | First installation in a game folder without BepInEx. |
-| **ModOnly** — Mod files only | Updating HeatSeekar, or installing it alongside a compatible BepInEx 6 IL2CPP setup. |
+| **Full** — Mod + BepInEx | First installation if you haven't installed BepInEx for the game before. |
+| **ModOnly** — Mod files only | Updating HeatSeekar, or if you have installed a compatible BepInEx 6 IL2CPP for the game. |
 
 Both packages include default translation JSON files and cursor/crosshair PNGs. Full also includes BepInEx for **Unity IL2CPP / Windows x64**. GitHub's automatic **Source code** downloads are for viewing or building the source, not installing the mod. Version details and changes are in the release notes.
 
