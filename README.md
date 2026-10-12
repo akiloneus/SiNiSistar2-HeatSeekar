@@ -1,16 +1,26 @@
-# SiNiSistar2 HeatSeekar
+<p align="center">
+  <a href="https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/">
+    <img src="https://akiloneus.github.io/rabiane_pray_loop_title.gif" alt="Rabiane">
+  </a>
+</p>
 
-[![Latest Release](https://img.shields.io/github/v/release/akiloneus/SiNiSistar2-HeatSeekar?label=Release&logo=github&color=blue)](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/akiloneus/SiNiSistar2-HeatSeekar/total?label=Downloads&color=success)](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?logo=windows)](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest)
+<h1 align="center">SiNiSistar2 HeatSeekar</h1>
+
+<p align="center">
+  <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest"><img src="https://img.shields.io/github/v/release/akiloneus/SiNiSistar2-HeatSeekar?label=Release&logo=github&color=blue" alt="Latest Release"></a>
+  <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases"><img src="https://img.shields.io/github/downloads/akiloneus/SiNiSistar2-HeatSeekar/total?label=Downloads&color=success" alt="Downloads"></a>
+  <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest"><img src="https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?logo=windows" alt="Platform"></a>
+</p>
 
 HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindings, mouse support for menus, and improved display options. Settings are integrated into the game's native menus.
 
-[Project page](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/) · [Download](#download) · [Report an issue](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/issues)
+Tested with SiNiSistar2 **1.2.1** and **1.3.1**; the mod is also compatible with the lite version and Steam version of SiNiSistar2.
+
+[Release page](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/) · [Download](#download) · [Report an issue](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/issues)
 
 ## Download
 
-Get the [**latest HeatSeekar release**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) for **Windows x64**. Tested with SiNiSistar2 **1.2.1** and **1.3.1**.
+Get the [**latest HeatSeekar release**](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest) for **Windows x64**. 
 
 Open **Assets** on the release page. Choose a ZIP ending in `-Full.zip` or `-ModOnly.zip`:
 
@@ -51,6 +61,7 @@ The Full package also installs the BepInEx runtime files in the game folder.
 **Keeping custom files:** Extracting the whole package can overwrite translation JSON files and cursor/crosshair PNGs under `localization/` and `assets/`. Back up your edits first. To keep those files unchanged, extract only `SiNiSistar2.HeatSeekar.dll` from the ModOnly ZIP and replace the existing file at `BepInEx/plugins/HeatSeekar/SiNiSistar2.HeatSeekar.dll`. This requires an already compatible BepInEx installation.
 
 ## Features
+You can preview some of these features [HERE](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/).
 
 - **Native mouse support:** Bind mouse buttons directly to in-game actions and navigate menus with the mouse.
 - **Gallery controls:** With Aki menu navigation enabled, click the on-screen hints to use their actions. Keycaps darken slightly on hover; Q/E change characters, L toggles slow motion, and P toggles pause.
