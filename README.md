@@ -1,12 +1,10 @@
 <p align="center">
-  <a href="https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/">
     <img src="https://akiloneus.github.io/rabiane_pray_loop_title.gif" alt="Rabiane">
-  </a>
 </p>
 
 <h1 align="center">SiNiSistar2 HeatSeekar</h1>
 
-<p align="center">
+<p align="">
   <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest"><img src="https://img.shields.io/github/v/release/akiloneus/SiNiSistar2-HeatSeekar?label=Release&logo=github&color=blue" alt="Latest Release"></a>
   <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases"><img src="https://img.shields.io/github/downloads/akiloneus/SiNiSistar2-HeatSeekar/total?label=Downloads&color=success" alt="Downloads"></a>
   <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest"><img src="https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?logo=windows" alt="Platform"></a>
@@ -17,6 +15,14 @@ HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindi
 Tested with SiNiSistar2 **1.2.1** and **1.3.1**; the mod is also compatible with the lite version and Steam version of SiNiSistar2.
 
 [Release page](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/) · [Download](#download) · [Report an issue](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/issues)
+
+## Preview
+<p align="center">
+  <a href="https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/">
+    <img src="https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/media/screenshot_menu_preview.jpg" alt="Menu Preview">
+  </a>
+</p>
+
 
 ## Download
 
