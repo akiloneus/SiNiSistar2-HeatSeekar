@@ -4,7 +4,7 @@
 
 <h1 align="center">SiNiSistar2 HeatSeekar</h1>
 
-<p align="">
+<p align="left">
   <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest"><img src="https://img.shields.io/github/v/release/akiloneus/SiNiSistar2-HeatSeekar?label=Release&logo=github&color=blue" alt="Latest Release"></a>
   <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases"><img src="https://img.shields.io/github/downloads/akiloneus/SiNiSistar2-HeatSeekar/total?label=Downloads&color=success" alt="Downloads"></a>
   <a href="https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest"><img src="https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?logo=windows" alt="Platform"></a>
@@ -14,7 +14,7 @@ HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindi
 
 Tested with SiNiSistar2 **1.2.1** and **1.3.1**; the mod is also compatible with the lite version and Steam version of SiNiSistar2.
 
-[Release page](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/) · [Download](#download) · [Report an issue](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/issues)
+[Project page](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/) · [Download](#download) · [Report an issue](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/issues)
 
 ## Preview
 <p align="center">
@@ -67,16 +67,26 @@ The Full package also installs the BepInEx runtime files in the game folder.
 **Keeping custom files:** Extracting the whole package can overwrite translation JSON files and cursor/crosshair PNGs under `localization/` and `assets/`. Back up your edits first. To keep those files unchanged, extract only `SiNiSistar2.HeatSeekar.dll` from the ModOnly ZIP and replace the existing file at `BepInEx/plugins/HeatSeekar/SiNiSistar2.HeatSeekar.dll`. This requires an already compatible BepInEx installation.
 
 ## Features
-You can preview some of these features [HERE](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/).
 
-- **Native mouse support:** Bind mouse buttons directly to in-game actions and navigate menus with the mouse.
+> More QoL functions may be added in the future. You can preview features with screenshots and video clips on the [Project page](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/#features).
+
+### Graphics
+- **Improved resolution:** Allows you to set a resolution that fits your monitor better while preserving the game's original 2:1 aspect ratio.
+- **Improved fullscreen mode:** A better implementation of fullscreen display mode that keeps UI elements sharp and clear (no more blurry upscaling).
+- **Improved framerate limiter:** Allows you to set a framerate cap or unlock it completely.
+
+### Audio
+- **Mute in background toggle:** Mute game audio while the window is not focused. (Don't let others hear Sistars' moaning in the background when you alt-tab out!)
+
+### UI/UX
+- **Native mouse support:** Bind mouse buttons directly to in-game actions and navigate menus with the mouse. (Yes, you can now navigate the gallery with a single hand, using a keyboard or mouse.)
 - **Gallery controls:** With Aki menu navigation enabled, click the on-screen hints to use their actions. Keycaps darken slightly on hover; Q/E change characters, L toggles slow motion, and P toggles pause.
-- **Display options:** Adjust resolution, borderless fullscreen, V-sync, and frame-rate limits, with support for preserving the original 2:1 aspect ratio.
-- **Mute in background:** Mute game audio while the game window is not focused.
-- **Audio menu fix:** Keep volume values visible at higher resolutions.
-- **Exploding Arrow Magic alt trigger:** Press Attack while aiming Shoot Magic to trigger Exploding Arrow Magic. The original combination remains available.
-- **Mouse aiming:** Control attack direction and Shoot Magic aiming with the mouse. This is a cheat feature, not recommended and disabled by default.
-- **Customization:** Use your own cursor/crosshair PNGs and edit translation JSON files, including translations for custom game languages.
+- **Hide portrait and/or HUD:** HUD layout changes to compact mode when the portrait is hidden for a clearer view.
+- **Audio menu fix:** Keeps volume values visible at higher resolutions.
+
+### Gameplay
+- **Exploding Arrow alt trigger:** An alternate key combination for triggering Exploding Arrow Magic (Shoot Magic aiming + Attack). The original combination remains available.
+- **Character mouse aiming:** A cheat feature (not recommended, disabled by default) allows you to control attack direction and Shoot Magic aiming with the mouse.
 
 ## Customization
 
