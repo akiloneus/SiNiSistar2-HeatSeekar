@@ -1,5 +1,9 @@
 # SiNiSistar2 HeatSeekar
 
+[![Latest Release](https://img.shields.io/github/v/release/akiloneus/SiNiSistar2-HeatSeekar?label=Release&logo=github&color=blue)](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/akiloneus/SiNiSistar2-HeatSeekar/total?label=Downloads&color=success)](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?logo=windows)](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest)
+
 HeatSeekar is a free quality-of-life mod for SiNiSistar2 with native mouse bindings, mouse support for menus, and improved display options. Settings are integrated into the game's native menus.
 
 [Project page](https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/) · [Download](#download) · [Report an issue](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/issues)
@@ -21,9 +25,8 @@ Both packages include default translation JSON files and cursor/crosshair PNGs. 
 
 ## How to install
 
-1. Close the game.
-2. Extract the ZIP selected above directly into the folder containing `SiNiSistar2.exe`. Merge folders and replace files when prompted. Do not put the extracted files inside an extra package-named folder.
-3. Start the game and configure HeatSeekar through the native Settings and Graphics pages. The first launch with BepInEx may take longer while it prepares its files.
+1. Extract the ZIP selected above directly into the folder containing `SiNiSistar2.exe`. Merge folders and replace files when prompted. Do not put the extracted files inside an extra package-named folder.
+2. Start the game and configure HeatSeekar through the native Settings and Graphics pages. The first launch with BepInEx may take longer while it prepares its files.
 
 Both packages place the mod files here:
 
@@ -40,11 +43,10 @@ Game folder/
 
 The Full package also installs the BepInEx runtime files in the game folder.
 
-## Updating
+## How to Update
 
 1. Download **ModOnly** (`*-ModOnly.zip`) from the [latest release](https://github.com/akiloneus/SiNiSistar2-HeatSeekar/releases/latest). Check its release notes for any BepInEx requirement changes.
-2. Close the game.
-3. Extract the ZIP into the same folder containing `SiNiSistar2.exe`, merging folders and replacing files when prompted.
+2. Extract the ZIP into the same folder containing `SiNiSistar2.exe`, merging folders and replacing files when prompted.
 
 **Keeping custom files:** Extracting the whole package can overwrite translation JSON files and cursor/crosshair PNGs under `localization/` and `assets/`. Back up your edits first. To keep those files unchanged, extract only `SiNiSistar2.HeatSeekar.dll` from the ModOnly ZIP and replace the existing file at `BepInEx/plugins/HeatSeekar/SiNiSistar2.HeatSeekar.dll`. This requires an already compatible BepInEx installation.
 
