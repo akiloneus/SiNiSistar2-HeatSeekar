@@ -31,36 +31,32 @@ internal sealed class PortraitHiddenLayout : IDisposable
     }
 
     private MainUI? owner;
-    private Placement? status, name, relics;
+    private Placement? status;
 
     internal void Apply(MainUI? main, bool hidePortrait)
     {
         if (!hidePortrait || main == null) { Dispose(); return; }
-        if (owner != main || status?.Rect == null || name?.Rect == null || relics?.Rect == null)
+        if (owner != main || status?.Rect == null)
         {
             Dispose();
             var nameUi = main.NameUI;
-            var relicsUi = main.RelicsUI;
-            if (nameUi == null || relicsUi == null) return;
+            if (nameUi == null) return;
             var statusRect = nameUi.transform.parent.Find("Status")?.GetComponent<RectTransform>();
             if (statusRect == null) return;
             owner = main;
             status = Placement.Save(statusRect);
-            name = Placement.Save(nameUi.GetComponent<RectTransform>());
-            relics = Placement.Save(relicsUi.GetComponent<RectTransform>());
         }
 
-        // Reference layout: gauge at the left edge, Name above Relics to its
-        // right, with the relic value aligned to the native HP/MP number line.
-        status.MoveLeftEdge(30);
-        name.MoveLeftEdge(200);
-        relics.MoveLeftEdge(200);
+        // Compact layout: keep Name and Relics at their native lower-left position
+        // (x = 12..148) and shift Status (Gauge + AbnormalGroup) left next to them
+        // so AbnormalGroup stays clear of Name and Relics.
+        status.MoveLeftEdge(184);
     }
 
     public void Dispose()
     {
-        status?.Restore(); name?.Restore(); relics?.Restore();
-        status = name = relics = null;
+        status?.Restore();
+        status = null;
         owner = null;
     }
 }

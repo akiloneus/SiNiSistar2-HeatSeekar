@@ -10,7 +10,7 @@
   "ui_help_frame_rate": "SiNi original 使用遊戲原本的影格率策略。設定影格率上限或無限制會關閉垂直同步。",
   "ui_help_fullscreen": "以桌面原生解析度顯示無邊框視窗。關閉後還原視窗尺寸，並關閉垂直同步。",
   "ui_help_hide_hud": "隱藏 HP/MP 圓環、狀態效果，以及 Name 和 Relics 資訊標籤（包括名稱與數值）。",
-  "ui_help_hide_portrait": "隱藏角色立繪，將 HP/MP 圓環移至左下角，Name 和 Relics 標籤排列在右側。",
+  "ui_help_hide_portrait": "隱藏角色立繪，將 HP/MP 圓環與狀態效果向左移至 Name 和 Relics 標籤右側。",
   "ui_help_navigation": "支援滑鼠、鍵盤與控制器的混合選單導覽，並加入額外按鍵綁定。\n靈感來自 Akiloneus 的同人遊戲專案——Rabiane。",
   "ui_help_preserve_aspect": "在任何解析度下保持遊戲原本的 2:1 畫面比例，剩餘區域顯示為黑邊。",
   "ui_help_vsync": "讓影格更新與顯示器同步。開啟時同時啟用全螢幕及 SiNi original 影格率策略。",

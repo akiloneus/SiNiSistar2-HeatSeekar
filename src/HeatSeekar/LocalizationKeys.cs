@@ -20,7 +20,7 @@ internal static class LocalizationKeys
         ["Hide HUD"] = "ui_label_hide_hud",
         ["Hide portrait"] = "ui_label_hide_portrait",
         ["Hide the HP/MP gauges, status effects, and Name and Relics tags, including their labels and values."] = "ui_help_hide_hud",
-        ["Hide the character portrait and move the HP/MP gauge to the lower left, with Name and Relics to its right."] = "ui_help_hide_portrait",
+        ["Hide the character portrait and move the HP/MP gauge and status effects left, next to Name and Relics."] = "ui_help_hide_portrait",
         ["Hybrid menu navigation with mouse, keyboard, and gamepad support and additional key bindings.\nInspired by Akiloneus's doujin game project—Rabiane."] = "ui_help_navigation",
         ["Keep the pointer inside the game window during gameplay."] = "ui_help_confine_cursor",
         ["Mouse aiming"] = "ui_label_mouse_aiming",

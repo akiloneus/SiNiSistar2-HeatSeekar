@@ -10,7 +10,7 @@
   "ui_help_frame_rate": "SiNi original はゲーム本来のフレーム制御を使用します。上限の指定や無制限を選ぶと垂直同期が無効になります。",
   "ui_help_fullscreen": "デスクトップの解像度でボーダーレス表示にします。オフにするとウィンドウサイズを戻し、垂直同期を無効にします。",
   "ui_help_hide_hud": "HP/MPゲージ、状態異常表示、NameとRelicsの情報表示（ラベルと数値を含む）を非表示にします。",
-  "ui_help_hide_portrait": "キャラクターの立ち絵を非表示にし、HP/MP ゲージを左下に、名前と遺物の表示をその右側に配置します。",
+  "ui_help_hide_portrait": "キャラクターの立ち絵を非表示にし、HP/MP ゲージと状態異常表示を Name と Relics のすぐ右へ寄せます。",
   "ui_help_navigation": "マウス、キーボード、ゲームパッドと追加キー割り当てに対応したメニューナビゲーション。\nAkiloneus の同人ゲームプロジェクト「Rabiane」に着想を得ています。",
   "ui_help_preserve_aspect": "どの解像度でもゲーム本来の2:1の縦横比を維持し、余白は黒く表示します。",
   "ui_help_vsync": "フレームをディスプレイと同期します。有効にすると全画面表示と SiNi original のフレーム制御も有効になります。",

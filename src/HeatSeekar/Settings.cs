@@ -49,7 +49,7 @@ internal sealed class Settings
         CrosshairHotspotY = config.Bind("Crosshair", "HotspotY", 0.5f, new ConfigDescription(hotspotHelp, new AcceptableValueRange<float>(0f, 1f)));
         MinimumAimDistance = config.Bind("Aim", "Minimum Distance", 0.05f, new ConfigDescription("Shoot straight ahead when the cursor is too close to the launch point.", new AcceptableValueRange<float>(0.001f, 1f)));
         EnableConsole = config.Bind("Diagnostics", "Enable BepInEx Console", false, "Show BepInEx's console for log output.");
-        HidePortrait = config.Bind("Interface", "Hide Portrait", false, "Hide the character portrait and move the HP/MP gauge to the lower left, with Name and Relics to its right.");
+        HidePortrait = config.Bind("Interface", "Hide Portrait", false, "Hide the character portrait and move the HP/MP gauge and status effects left, next to Name and Relics.");
         HideHud = config.Bind("Interface", "Hide HUD", false, "Hide the HP/MP gauges, status effects, and Name and Relics tags, including their labels and values.");
         MuteInBackground = config.Bind("Audio", "Mute In Background", false, "Mute game audio while the game window is not focused.");
         AltExplosionTrigger = config.Bind("Combat", "Exploding Arrow Alt Trigger", false, "While aiming Shoot Magic, press Attack to trigger Exploding Arrow Magic. The original combination remains available.");
