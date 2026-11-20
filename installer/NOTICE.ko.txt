@@ -1,0 +1,25 @@
+﻿SiNiSistar2 HeatSeekar — by AkiSoft
+======================
+
+HeatSeekar는 SiNiSistar2용 무료 비공식 커뮤니티 Mod입니다.
+CC BY-NC-SA 4.0(비영리) 라이선스에 따라 있는 그대로 무보증으로 제공됩니다.
+
+프로젝트 페이지:
+https://akiloneus.github.io/resources/sinisistar2-heatseekar-mod/
+
+소스 저장소 및 문제 신고:
+https://github.com/akiloneus/SiNiSistar2-HeatSeekar
+
+--------------------------------------------------------------------------------
+타사 구성 요소
+--------------------------------------------------------------------------------
+
+BepInEx 6 (Unity IL2CPP, Windows x64)
+- 라이선스: GNU 약소 일반 공중 사용 허가서 버전 2.1 (LGPL-2.1)
+- 소스:     https://github.com/BepInEx/BepInEx
+- 참고:     이 설치 프로그램에는 수정되지 않은 BepInEx 공식 빌드가 포함되어
+            있으며, 선택한 게임 폴더에 호환되는 BepInEx가 없을 때만 설치됩니다.
+            LGPL-2.1 라이선스 전문은 BepInEx\LICENSE-BepInEx.txt로 설치됩니다.
+
+UnityDoorstop, HarmonyX, Il2CppInterop 및 .NET 런타임 구성 요소는 BepInEx 공식
+패키지의 일부로 각각의 오픈 소스 라이선스에 따라 배포됩니다.

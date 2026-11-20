@@ -4,6 +4,7 @@ obj/
 /work/
 /dist/
 /artifacts/
+/src/HeatSeekar.Installer.Test/
 TestResults/
 GamePaths.local.props
 *.dll
